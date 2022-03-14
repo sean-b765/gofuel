@@ -2,10 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"os"
 	"sort"
+	"strings"
 
 	"example.com/fuel/types"
 	"example.com/fuel/util"
@@ -38,12 +37,12 @@ func GetNearest(w http.ResponseWriter, r *http.Request) {
 		return items[i].DistanceTo < items[j].DistanceTo
 	})
 
-	fmt.Println(os.Getenv("MAPS_KEY"))
-
 	for i := 0; i < 5; i++ {
 		var origin = util.CoordsToString(userCoordinates)
 		var destination = util.CoordsToString([2]float64{util.ToFloat(items[i].Latitude), util.ToFloat(items[i].Longitude)})
-		util.GetJourney(origin, destination)
+		distance, duration := util.GetJourney(origin, destination)
+		items[i].JourneyDistance = distance
+		items[i].JourneyTime = duration
 	}
 
 	// Group date and items into struct for json encode
@@ -51,7 +50,7 @@ func GetNearest(w http.ResponseWriter, r *http.Request) {
 		Date     string
 		Stations []types.Item
 	}
-	_json := Json{Stations: items, Date: date}
+	_json := Json{Stations: items, Date: strings.Fields(date)[0]}
 
 	// Write to response
 	json.NewEncoder(w).Encode(_json)
@@ -96,12 +95,20 @@ func GetCheapest(w http.ResponseWriter, r *http.Request) {
 		return itemsWithinRadius[i].Price < itemsWithinRadius[j].Price
 	})
 
+	for i := 0; i < 5; i++ {
+		var origin = util.CoordsToString(userCoordinates)
+		var destination = util.CoordsToString([2]float64{util.ToFloat(itemsWithinRadius[i].Latitude), util.ToFloat(itemsWithinRadius[i].Longitude)})
+		distance, duration := util.GetJourney(origin, destination)
+		itemsWithinRadius[i].JourneyDistance = distance
+		itemsWithinRadius[i].JourneyTime = duration
+	}
+
 	// Group date and items into struct for json encode
 	type Json struct {
 		Date     string
 		Stations []types.Item
 	}
-	_json := Json{Stations: itemsWithinRadius, Date: date}
+	_json := Json{Stations: itemsWithinRadius, Date: strings.Fields(date)[0]}
 
 	// Write to response
 	json.NewEncoder(w).Encode(_json)
