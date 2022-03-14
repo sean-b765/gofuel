@@ -3,12 +3,13 @@ package util
 import (
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/tidwall/gjson"
 )
 
 func GetJourney(origin, destination string) (string, string) {
-	url := "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" + origin + "&destinations=" + destination + "&mode=driving&language=en-US&key=" + "AIzaSyCrSxicHtmCKnLLuwix7ITt4QFC5E0bKp0"
+	url := "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" + origin + "&destinations=" + destination + "&mode=driving&language=en-US&key=" + os.Getenv("MAPS_KEY")
 	resp, err := http.Get(url)
 
 	if err != nil {

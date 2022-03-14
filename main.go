@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 
@@ -125,5 +127,7 @@ func main() {
 		w.Write([]byte("Missing ?radius={value} in URL\n"))
 	}).Methods("GET")
 
-	http.ListenAndServe(":3000", r)
+	fmt.Println("Serving requests on localhost:" + os.Getenv("PORT"))
+
+	http.ListenAndServe(":"+os.Getenv("PORT"), r)
 }
