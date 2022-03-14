@@ -4,20 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
-	"strings"
 
-	"example.com/fuel/data"
 	"example.com/fuel/types"
 	"example.com/fuel/util"
 	"github.com/gorilla/mux"
 )
 
 func GetNearest(w http.ResponseWriter, r *http.Request) {
-	var _redis = data.GetClient()
-
-	fmt.Println("Gidgie: ", _redis.Get("Gidgie-One-Stop"))
-
 	vars := mux.Vars(r)
 	// Get fuel
 	var items, date = util.GetFuelPrices()
@@ -34,19 +29,22 @@ func GetNearest(w http.ResponseWriter, r *http.Request) {
 
 	// Iterate items - add the haversine distance between user coordinates and the fuel station
 	for idx := range items {
-		var TradingName = strings.Replace(items[idx].TradingName, " ", "-", -1)
-		// Add to redis
-		data.InsertOrUpdate(TradingName, items[idx])
-
 		stationCoordinates := [2]float64{util.ToFloat(items[idx].Latitude), util.ToFloat(items[idx].Longitude)}
 
 		items[idx].DistanceTo = util.GetDistance(userCoordinates, stationCoordinates)
-
 	}
 
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].DistanceTo < items[j].DistanceTo
 	})
+
+	fmt.Println(os.Getenv("MAPS_KEY"))
+
+	for i := 0; i < 5; i++ {
+		var origin = util.CoordsToString(userCoordinates)
+		var destination = util.CoordsToString([2]float64{util.ToFloat(items[i].Latitude), util.ToFloat(items[i].Longitude)})
+		util.GetJourney(origin, destination)
+	}
 
 	// Group date and items into struct for json encode
 	type Json struct {
@@ -107,10 +105,6 @@ func GetCheapest(w http.ResponseWriter, r *http.Request) {
 
 	// Write to response
 	json.NewEncoder(w).Encode(_json)
-}
-
-func InsertOrUpdate() {
-
 }
 
 func main() {

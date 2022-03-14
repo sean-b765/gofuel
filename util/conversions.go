@@ -11,3 +11,8 @@ func ToFloat(value string) float64 {
 
 	return 0
 }
+
+func FromFloat(value float64) string {
+	_string := strconv.FormatFloat(value, 'f', -1, 32)
+	return _string
+}

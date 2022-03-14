@@ -23,3 +23,19 @@ type Item struct {
 	JourneyTime     string
 	JourneyDistance string
 }
+
+type RedisItem struct {
+	Title           string
+	Brand           string
+	Date            string
+	Price           string
+	TradingName     string
+	Location        string
+	Address         string
+	Phone           string
+	Latitude        string
+	Longitude       string
+	DistanceTo      float64
+	JourneyTime     string
+	JourneyDistance string
+}
