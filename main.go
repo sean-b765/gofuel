@@ -1,17 +1,24 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 
 	"example.com/fuel/types"
 	"example.com/fuel/util"
 	"github.com/gorilla/mux"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/awslabs/aws-lambda-go-api-proxy/core"
+	"github.com/awslabs/aws-lambda-go-api-proxy/gorillamux"
 )
+
+var gorillaLambda *gorillamux.GorillaMuxAdapter
 
 func GetNearest(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -59,7 +66,7 @@ func GetNearest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	Returns the cheapest within a certain radius
+Returns the cheapest within a certain radius
 */
 func GetCheapest(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -116,7 +123,7 @@ func GetCheapest(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(_json)
 }
 
-func main() {
+func Init() {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/nearest/{coordinates}", GetNearest).Methods("GET")
@@ -127,7 +134,21 @@ func main() {
 		w.Write([]byte("Missing ?radius={value} in URL\n"))
 	}).Methods("GET")
 
-	fmt.Println("Serving requests on localhost:" + os.Getenv("PORT"))
+	r.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("OK"))
+	}).Methods("GET")
 
-	http.ListenAndServe(":"+os.Getenv("PORT"), r)
+	// Create GorillaMuxAdapter from router
+	gorillaLambda = gorillamux.New(r)
+}
+
+func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	r, err := gorillaLambda.ProxyWithContext(ctx, *core.NewSwitchableAPIGatewayRequestV1(&req))
+	return *r.Version1(), err
+}
+
+func main() {
+	fmt.Println("Received event!")
+	Init()
+	lambda.Start(Handler)
 }
