@@ -1,7 +1,7 @@
 package util
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 
@@ -16,7 +16,7 @@ func GetJourney(origin, destination string) (string, string) {
 		panic(err)
 	}
 
-	byteValue, _ := ioutil.ReadAll(resp.Body)
+	byteValue, _ := io.ReadAll(resp.Body)
 
 	response := gjson.ParseBytes(byteValue)
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,18 +11,18 @@ import (
 	"example.com/fuel/util"
 	"github.com/gorilla/mux"
 
-	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/awslabs/aws-lambda-go-api-proxy/core"
 	"github.com/awslabs/aws-lambda-go-api-proxy/gorillamux"
 )
 
-var gorillaLambda *gorillamux.GorillaMuxAdapter
+var gorillaLambda *gorillamux.GorillaMuxAdapterV2
 
 func GetNearest(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	// Get fuel
 	var items, date = util.GetFuelPrices()
+	fmt.Println("GetNearest!!!!!!!")
+	fmt.Println(vars)
 
 	// Set the header - json
 	w.Header().Set("Content-Type", "application/json")
@@ -126,6 +125,11 @@ func GetCheapest(w http.ResponseWriter, r *http.Request) {
 func Init() {
 	r := mux.NewRouter()
 
+	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("NOT FOUND: ", r.RequestURI)
+		http.Error(w, fmt.Sprintf("Not found: [%s]", r.RequestURI), http.StatusNotFound)
+	})
+
 	r.HandleFunc("/nearest/{coordinates}", GetNearest).Methods("GET")
 	r.HandleFunc("/cheapest/{coordinates}", GetCheapest).Methods("GET").Queries("radius", "{radius:[0-9]+}")
 
@@ -139,16 +143,10 @@ func Init() {
 	}).Methods("GET")
 
 	// Create GorillaMuxAdapter from router
-	gorillaLambda = gorillamux.New(r)
-}
-
-func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	r, err := gorillaLambda.ProxyWithContext(ctx, *core.NewSwitchableAPIGatewayRequestV1(&req))
-	return *r.Version1(), err
+	gorillaLambda = gorillamux.NewV2(r)
 }
 
 func main() {
-	fmt.Println("Received event!")
 	Init()
-	lambda.Start(Handler)
+	lambda.Start(gorillaLambda.ProxyWithContext)
 }
