@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -20,8 +21,25 @@ func GetJourney(origin, destination string) (string, string) {
 
 	response := gjson.ParseBytes(byteValue)
 
-	distance := response.Get("rows").Array()[0].Get("elements.#.distance.text").Array()[0].String()
-	duration := response.Get("rows").Array()[0].Get("elements.#.duration.text").Array()[0].String()
+	rows := response.Get("rows")
 
-	return distance, duration
+	// TODO should just make a type schema instead of doing this all raw
+	if !rows.Exists() {
+		panic(errors.New("no rows received from google maps api"))
+	}
+
+	distance := rows.Array()
+	duration := rows.Array()
+	if len(distance) == 0 || len(duration) == 0 {
+		return "", ""
+	}
+
+	distanceArray := distance[0].Get("elements.#.distance.text").Array()
+	durationArray := duration[0].Get("elements.#.duration.text").Array()
+
+	if len(distanceArray) == 0 || len(durationArray) == 0 {
+		return "", ""
+	}
+
+	return distanceArray[0].String(), durationArray[0].String()
 }
