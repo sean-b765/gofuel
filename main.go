@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"example.com/fuel/routes"
 	"github.com/aws/aws-lambda-go/events"
@@ -35,7 +34,6 @@ func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 }
 
 func main() {
-	fmt.Printf("main()\n")
 	Init()
 	lambda.Start(Handler)
 }

@@ -50,5 +50,6 @@ func GetNearest(c *gin.Context) {
 	// Group date and items into struct for json encode
 	response := types.JsonResponse{Stations: items, Date: strings.Fields(date)[0]}
 
+	c.Header("Access-Control-Allow-Origin", "*")
 	c.JSON(200, response)
 }
