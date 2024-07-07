@@ -6,7 +6,7 @@ package util
 
 import (
 	"encoding/xml"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"example.com/fuel/types"
@@ -19,7 +19,7 @@ func GetFuelPrices() ([]types.Item, string) {
 		panic("Error with http.Get")
 	}
 
-	byteValue, _ := ioutil.ReadAll(resp.Body)
+	byteValue, _ := io.ReadAll(resp.Body)
 
 	var response types.Rss
 	xml.Unmarshal(byteValue, &response)

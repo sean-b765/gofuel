@@ -56,3 +56,8 @@ type Journey struct {
 	} `json:"rows"`
 	Status string `json:"status"`
 }
+
+type JsonResponse struct {
+	Date     string
+	Stations []Item
+}

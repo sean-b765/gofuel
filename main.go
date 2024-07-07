@@ -2,153 +2,40 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"sort"
-	"strings"
 
-	"example.com/fuel/types"
-	"example.com/fuel/util"
-	"github.com/gorilla/mux"
-
+	"example.com/fuel/routes"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/awslabs/aws-lambda-go-api-proxy/core"
-	"github.com/awslabs/aws-lambda-go-api-proxy/gorillamux"
+	ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
+	"github.com/gin-gonic/gin"
 )
 
-var gorillaLambda *gorillamux.GorillaMuxAdapter
-
-func GetNearest(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	// Get fuel
-	var items, date = util.GetFuelPrices()
-
-	// Set the header - json
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-
-	// Parse coordinates string -> [2]float64
-	coordinates := util.ParseCoordinates(vars["coordinates"])
-	lat1 := util.ToFloat(coordinates[0])
-	lng1 := util.ToFloat(coordinates[1])
-	userCoordinates := [2]float64{lat1, lng1}
-
-	// Iterate items - add the haversine distance between user coordinates and the fuel station
-	for idx := range items {
-		stationCoordinates := [2]float64{util.ToFloat(items[idx].Latitude), util.ToFloat(items[idx].Longitude)}
-
-		items[idx].DistanceTo = util.GetDistance(userCoordinates, stationCoordinates)
-	}
-
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].DistanceTo < items[j].DistanceTo
-	})
-
-	for i := 0; i < 5; i++ {
-		var origin = util.CoordsToString(userCoordinates)
-		var destination = util.CoordsToString([2]float64{util.ToFloat(items[i].Latitude), util.ToFloat(items[i].Longitude)})
-		distance, duration := util.GetJourney(origin, destination)
-		items[i].JourneyDistance = distance
-		items[i].JourneyTime = duration
-	}
-
-	// Group date and items into struct for json encode
-	type Json struct {
-		Date     string
-		Stations []types.Item
-	}
-	_json := Json{Stations: items, Date: strings.Fields(date)[0]}
-
-	// Write to response
-	json.NewEncoder(w).Encode(_json)
-}
-
-/*
-Returns the cheapest within a certain radius
-*/
-func GetCheapest(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	// Get fuel
-	var items, date = util.GetFuelPrices()
-
-	// Set the header - json
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-
-	// Parse coordinates string -> [2]float64
-	coordinates := util.ParseCoordinates(vars["coordinates"])
-	lat1 := util.ToFloat(coordinates[0])
-	lng1 := util.ToFloat(coordinates[1])
-	userCoordinates := [2]float64{lat1, lng1}
-
-	itemsWithinRadius := []types.Item{}
-
-	// If the distanceTo isn't within radius, skip
-	for idx := range items {
-		stationCoordinates := [2]float64{util.ToFloat(items[idx].Latitude), util.ToFloat(items[idx].Longitude)}
-
-		distanceTo := util.GetDistance(userCoordinates, stationCoordinates)
-
-		if distanceTo > util.ToFloat(vars["radius"]) {
-			continue
-		}
-
-		items[idx].DistanceTo = distanceTo
-
-		itemsWithinRadius = append(itemsWithinRadius, items[idx])
-	}
-
-	sort.Slice(itemsWithinRadius, func(i, j int) bool {
-		return itemsWithinRadius[i].Price < itemsWithinRadius[j].Price
-	})
-
-	for i := 0; i < 5; i++ {
-		var origin = util.CoordsToString(userCoordinates)
-		var destination = util.CoordsToString([2]float64{util.ToFloat(itemsWithinRadius[i].Latitude), util.ToFloat(itemsWithinRadius[i].Longitude)})
-		distance, duration := util.GetJourney(origin, destination)
-		itemsWithinRadius[i].JourneyDistance = distance
-		itemsWithinRadius[i].JourneyTime = duration
-	}
-
-	// Group date and items into struct for json encode
-	type Json struct {
-		Date     string
-		Stations []types.Item
-	}
-	_json := Json{Stations: itemsWithinRadius, Date: strings.Fields(date)[0]}
-
-	// Write to response
-	json.NewEncoder(w).Encode(_json)
-}
+var adapter *ginadapter.GinLambda
 
 func Init() {
-	r := mux.NewRouter()
+	r := gin.Default()
 
-	r.HandleFunc("/nearest/{coordinates}", GetNearest).Methods("GET")
-	r.HandleFunc("/cheapest/{coordinates}", GetCheapest).Methods("GET").Queries("radius", "{radius:[0-9]+}")
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "pong",
+		})
+	})
 
-	// Error - need radius query
-	r.HandleFunc("/cheapest/{coordinates}", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Missing ?radius={value} in URL\n"))
-	}).Methods("GET")
+	r.GET("/nearest/:coordinates", routes.GetNearest)
+	r.GET("/cheapest/:coordinates", routes.GetCheapest)
 
-	r.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("OK"))
-	}).Methods("GET")
-
-	// Create GorillaMuxAdapter from router
-	gorillaLambda = gorillamux.New(r)
+	// Create Adapter from router
+	adapter = ginadapter.New(r)
 }
 
 func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	r, err := gorillaLambda.ProxyWithContext(ctx, *core.NewSwitchableAPIGatewayRequestV1(&req))
-	return *r.Version1(), err
+	// If no name is provided in the HTTP request body, throw an error
+	return adapter.ProxyWithContext(ctx, req)
 }
 
 func main() {
-	fmt.Println("Received event!")
+	fmt.Printf("main()\n")
 	Init()
 	lambda.Start(Handler)
 }
