@@ -1,33 +1,32 @@
 package routes
 
 import (
-	"encoding/json"
-	"net/http"
+	"errors"
 	"sort"
 	"strings"
 
 	"example.com/fuel/types"
 	"example.com/fuel/util"
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 )
 
 /*
  * Returns the nearest to given coordinates
  */
-func GetNearest(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	// Get fuel
-	var items, date = util.GetFuelPrices()
-
-	// Set the header - json
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+func GetNearest(c *gin.Context) {
+	coords, success := c.Params.Get("coordinates")
+	if !success {
+		panic(errors.New("unable to retrieve coordinates"))
+	}
 
 	// Parse coordinates string -> [2]float64
-	coordinates, err := util.ParseCoordinates(vars["coordinates"])
+	coordinates, err := util.ParseCoordinates(coords)
 	if err != nil {
 		panic(err)
 	}
+
+	// Get fuel
+	var items, date = util.GetFuelPrices()
 
 	// Iterate items - add the haversine distance between user coordinates and the fuel station
 	for idx := range items {
@@ -51,6 +50,5 @@ func GetNearest(w http.ResponseWriter, r *http.Request) {
 	// Group date and items into struct for json encode
 	response := types.JsonResponse{Stations: items, Date: strings.Fields(date)[0]}
 
-	// Write to response
-	json.NewEncoder(w).Encode(response)
+	c.JSON(200, response)
 }

@@ -1,33 +1,34 @@
 package routes
 
 import (
-	"encoding/json"
-	"net/http"
+	"errors"
 	"sort"
 	"strings"
 
 	"example.com/fuel/types"
 	"example.com/fuel/util"
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 )
 
 /*
  * Returns the cheapest within a certain radius
  */
-func GetCheapest(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	// Get fuel
-	var items, date = util.GetFuelPrices()
+func GetCheapest(c *gin.Context) {
+	coords, success := c.Params.Get("coordinates")
+	radius, _ := c.GetQuery("radius")
 
-	// Set the header - json
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	if !success {
+		panic(errors.New("unable to retrieve coordinates"))
+	}
 
 	// Parse coordinates string -> [2]float64
-	coordinates, err := util.ParseCoordinates(vars["coordinates"])
+	coordinates, err := util.ParseCoordinates(coords)
 	if err != nil {
 		panic(err)
 	}
+
+	// Get fuel data
+	var items, date = util.GetFuelPrices()
 
 	itemsWithinRadius := []types.Item{}
 
@@ -37,7 +38,7 @@ func GetCheapest(w http.ResponseWriter, r *http.Request) {
 
 		distanceTo := util.GetDistance(coordinates, stationCoordinates)
 
-		if distanceTo > util.ToFloat(vars["radius"]) {
+		if distanceTo > util.ToFloat(radius) {
 			continue
 		}
 
@@ -61,6 +62,5 @@ func GetCheapest(w http.ResponseWriter, r *http.Request) {
 	// Group date and items into struct for json encode
 	response := types.JsonResponse{Stations: itemsWithinRadius, Date: strings.Fields(date)[0]}
 
-	// Write to response
-	json.NewEncoder(w).Encode(response)
+	c.JSON(200, response)
 }
