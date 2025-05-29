@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -37,6 +38,7 @@ func Init() {
 
 	// Create Adapter from router
 	adapter = ginadapter.New(r)
+	fmt.Println("strip " + os.Getenv("BASE_PATH"))
 	adapter.StripBasePath(os.Getenv("BASE_PATH"))
 }
 
