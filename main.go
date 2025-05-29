@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"example.com/fuel/routes"
@@ -36,6 +37,7 @@ func Init() {
 
 	// Create Adapter from router
 	adapter = ginadapter.New(r)
+	adapter.StripBasePath(os.Getenv("BASE_PATH"))
 }
 
 func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {

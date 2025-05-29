@@ -38,9 +38,11 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
+        MAPS_KEY: ${{ secrets.MAPS_KEY }}
+        BASE_PATH: ${{ vars.BASE_PATH }}
       run: |
         # Build a docker container and
         # push it to ECR so that our lambda can pull the newest image
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest --build-arg MAPS_KEY=$MAPS_KEY --build-arg BASE_PATH=$BASE_PATH .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY --all-tags
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
