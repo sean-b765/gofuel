@@ -39,14 +39,6 @@ func GetNearest(c *gin.Context) {
 		return items[i].DistanceTo < items[j].DistanceTo
 	})
 
-	for i := 0; i < 5; i++ {
-		var origin = util.CoordsToString(coordinates)
-		var destination = util.CoordsToString([2]float64{util.ToFloat(items[i].Latitude), util.ToFloat(items[i].Longitude)})
-		distance, duration := util.GetJourney(origin, destination)
-		items[i].JourneyDistance = distance
-		items[i].JourneyTime = duration
-	}
-
 	// Group date and items into struct for json encode
 	response := types.JsonResponse{Stations: items, Date: strings.Fields(date)[0]}
 

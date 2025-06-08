@@ -1,7 +1,8 @@
-package util
+package google
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 func GetJourney(origin, destination string) (string, string) {
 	url := "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" + origin + "&destinations=" + destination + "&mode=driving&language=en-US&key=" + os.Getenv("MAPS_KEY")
+	fmt.Println(url)
 	resp, err := http.Get(url)
 
 	if err != nil {
@@ -21,9 +23,18 @@ func GetJourney(origin, destination string) (string, string) {
 
 	response := gjson.ParseBytes(byteValue)
 
+	// Error message provided
+	status := response.Get("status").String()
+	if status != "OK" {
+		error_message := response.Get("error_message").String()
+		fmt.Println(status + " : " + error_message)
+		return "", ""
+	}
+
 	rows := response.Get("rows")
 
-	// TODO should just make a type schema instead of doing this all raw
+	fmt.Println(rows)
+
 	if !rows.Exists() {
 		panic(errors.New("no rows received from google maps api"))
 	}
