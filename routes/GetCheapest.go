@@ -51,14 +51,6 @@ func GetCheapest(c *gin.Context) {
 		return itemsWithinRadius[i].Price < itemsWithinRadius[j].Price
 	})
 
-	for i := 0; i < 5; i++ {
-		var origin = util.CoordsToString(coordinates)
-		var destination = util.CoordsToString([2]float64{util.ToFloat(itemsWithinRadius[i].Latitude), util.ToFloat(itemsWithinRadius[i].Longitude)})
-		distance, duration := util.GetJourney(origin, destination)
-		itemsWithinRadius[i].JourneyDistance = distance
-		itemsWithinRadius[i].JourneyTime = duration
-	}
-
 	// Group date and items into struct for json encode
 	response := types.JsonResponse{Stations: itemsWithinRadius, Date: strings.Fields(date)[0]}
 

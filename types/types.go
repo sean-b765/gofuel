@@ -9,35 +9,17 @@ type Rss struct {
 }
 
 type Item struct {
-	Title           string `xml:"title"`
-	Brand           string `xml:"brand"`
-	Date            string `xml:"date"`
-	Price           string `xml:"price"`
-	TradingName     string `xml:"trading-name"`
-	Location        string `xml:"location"`
-	Address         string `xml:"address"`
-	Phone           string `xml:"phone"`
-	Latitude        string `xml:"latitude"`
-	Longitude       string `xml:"longitude"`
-	DistanceTo      float64
-	JourneyTime     string
-	JourneyDistance string
-}
-
-type RedisItem struct {
-	Title           string
-	Brand           string
-	Date            string
-	Price           string
-	TradingName     string
-	Location        string
-	Address         string
-	Phone           string
-	Latitude        string
-	Longitude       string
-	DistanceTo      float64
-	JourneyTime     string
-	JourneyDistance string
+	Title       string `xml:"title"`
+	Brand       string `xml:"brand"`
+	Date        string `xml:"date"`
+	Price       string `xml:"price"`
+	TradingName string `xml:"trading-name"`
+	Location    string `xml:"location"`
+	Address     string `xml:"address"`
+	Phone       string `xml:"phone"`
+	Latitude    string `xml:"latitude"`
+	Longitude   string `xml:"longitude"`
+	DistanceTo  float64
 }
 
 type Journey struct {
@@ -60,4 +42,9 @@ type Journey struct {
 type JsonResponse struct {
 	Date     string
 	Stations []Item
+}
+
+type JourneyJsonResponse struct {
+	Distance string
+	Duration string
 }

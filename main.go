@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -12,11 +11,12 @@ import (
 	ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 var adapter *ginadapter.GinLambda
 
-func Init() {
+func SetupRouter() (*gin.Engine) {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"}, // or your specific domain
@@ -35,11 +35,9 @@ func Init() {
 
 	r.GET("/nearest/:coordinates", routes.GetNearest)
 	r.GET("/cheapest/:coordinates", routes.GetCheapest)
+	r.GET("/journey", routes.GetJourney)
 
-	// Create Adapter from router
-	adapter = ginadapter.New(r)
-	fmt.Println("strip " + os.Getenv("BASE_PATH"))
-	adapter.StripBasePath(os.Getenv("BASE_PATH"))
+	return r
 }
 
 func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -47,7 +45,22 @@ func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 	return adapter.ProxyWithContext(ctx, req)
 }
 
+func IsLambda() (bool) {
+	_, isLambdaEnv := os.LookupEnv("_LAMBDA_SERVER_PORT")
+	return isLambdaEnv
+}
+
 func main() {
-	Init()
-	lambda.Start(Handler)
+	r := SetupRouter()
+
+	// Create Adapter from router
+	if IsLambda() {
+		// Lambda entry point
+		adapter = ginadapter.New(r)
+		adapter.StripBasePath(os.Getenv("BASE_PATH"))
+		lambda.Start(Handler)
+	} else {
+		// Local entry point
+		r.Run(":8081")
+	}
 }
