@@ -12,6 +12,7 @@ import (
 	ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 var adapter *ginadapter.GinLambda
@@ -37,9 +38,18 @@ func Init() {
 	r.GET("/cheapest/:coordinates", routes.GetCheapest)
 
 	// Create Adapter from router
-	adapter = ginadapter.New(r)
-	fmt.Println("strip " + os.Getenv("BASE_PATH"))
-	adapter.StripBasePath(os.Getenv("BASE_PATH"))
+	_, isLambda := os.LookupEnv("_LAMBDA_SERVER_PORT")
+
+	fmt.Println(isLambda)
+
+	if isLambda {
+		// Lambda entry point
+		adapter = ginadapter.New(r)
+		adapter.StripBasePath(os.Getenv("BASE_PATH"))
+	} else {
+		// Local entry point
+		r.Run(":8080")
+	}
 }
 
 func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
