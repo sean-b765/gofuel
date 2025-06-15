@@ -38,7 +38,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-          MAPS_KEY: ${{ vars.MAPS_KEY }}
+          MAPS_KEY: ${{ secrets.MAPS_KEY }}
           BASE_PATH: ${{ vars.BASE_PATH }}
         run: |
           # Build a docker container and

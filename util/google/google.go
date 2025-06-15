@@ -33,8 +33,6 @@ func GetJourney(origin, destination string) (string, string) {
 
 	rows := response.Get("rows")
 
-	fmt.Println(rows)
-
 	if !rows.Exists() {
 		panic(errors.New("no rows received from google maps api"))
 	}
