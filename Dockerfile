@@ -16,6 +16,7 @@ ARG BASE_PATH
 
 ENV MAPS_KEY=${MAPS_KEY}
 ENV BASE_PATH=${BASE_PATH}
+ENV ENVIRONMENT="production"
 
 COPY --from=builder /app/main ./main
 ENTRYPOINT ["./main"]

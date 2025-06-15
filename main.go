@@ -45,16 +45,16 @@ func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 	return adapter.ProxyWithContext(ctx, req)
 }
 
-func IsLambda() (bool) {
-	_, isLambdaEnv := os.LookupEnv("_LAMBDA_SERVER_PORT")
-	return isLambdaEnv
+func IsProduction() (bool) {
+	environment := os.Getenv("ENVIRONMENT")
+	return environment == "production"
 }
 
 func main() {
 	r := SetupRouter()
 
 	// Create Adapter from router
-	if IsLambda() {
+	if IsProduction() {
 		// Lambda entry point
 		adapter = ginadapter.New(r)
 		adapter.StripBasePath(os.Getenv("BASE_PATH"))
