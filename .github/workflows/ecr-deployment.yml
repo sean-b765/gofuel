@@ -51,8 +51,7 @@ jobs:
         id: deploy-image
         env:
           LAMBDA_ARN: ${{ vars.LAMBDA_ARN }}
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_URI: ${{ steps.build-image.outputs.image }}
           aws-region: ${{ env.AWS_REGION }}
         run: |
           aws lambda update-function-code --function-name $LAMBDA_ARN --image-uri $IMAGE_URI --region $AWS_REGION
