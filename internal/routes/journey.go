@@ -1,9 +1,9 @@
 package routes
 
 import (
-	"example.com/fuel/types"
-	"example.com/fuel/util"
-	"example.com/fuel/util/google"
+	"seanboaden.dev/fuel/internal/types"
+	"seanboaden.dev/fuel/internal/util"
+	"seanboaden.dev/fuel/internal/util/google"
 	"github.com/gin-gonic/gin"
 )
 

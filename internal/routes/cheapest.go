@@ -5,9 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	"example.com/fuel/types"
-	"example.com/fuel/util"
 	"github.com/gin-gonic/gin"
+	"seanboaden.dev/fuel/internal/providers"
+	"seanboaden.dev/fuel/internal/types"
+	"seanboaden.dev/fuel/internal/util"
 )
 
 /*
@@ -28,7 +29,7 @@ func GetCheapest(c *gin.Context) {
 	}
 
 	// Get fuel data
-	var items, date = util.GetFuelPrices()
+	var items, date = providers.GetWaPricesCurrent()
 
 	itemsWithinRadius := []types.Item{}
 
