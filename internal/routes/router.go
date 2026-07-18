@@ -19,11 +19,7 @@ func SetupRouter() *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
+	r.GET("/ping", Health)
 
 	r.GET("/cheapest/:coordinates", GetCheapest)
 	r.GET("/journey", GetJourney)

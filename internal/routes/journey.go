@@ -1,10 +1,10 @@
 package routes
 
 import (
+	"github.com/gin-gonic/gin"
 	"seanboaden.dev/fuel/internal/types"
 	"seanboaden.dev/fuel/internal/util"
 	"seanboaden.dev/fuel/internal/util/google"
-	"github.com/gin-gonic/gin"
 )
 
 /*
@@ -29,7 +29,7 @@ func GetJourney(c *gin.Context) {
 	destination := util.CoordsToString(destinationCoordinates)
 	distance, duration := google.GetJourney(origin, destination)
 
-	response := types.JourneyJsonResponse{ Distance: distance, Duration: duration }
+	response := types.GoogleJourneyResponse{Distance: distance, Duration: duration}
 
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.JSON(200, response)

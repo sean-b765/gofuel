@@ -1,14 +1,6 @@
 package types
 
-type Rss struct {
-	Channel struct {
-		Title       string `xml:"title"`
-		Description string `xml:"description"`
-		Items       []Item `xml:"item"`
-	} `xml:"channel"`
-}
-
-type Item struct {
+type Station struct {
 	Title       string `xml:"title"`
 	Brand       string `xml:"brand"`
 	Date        string `xml:"date"`
@@ -22,29 +14,12 @@ type Item struct {
 	DistanceTo  float64
 }
 
-type Journey struct {
-	Rows []struct {
-		Elements []struct {
-			Distance struct {
-				Text  string `json:"text"`
-				Value int    `json:"value"`
-			} `json:"distance"`
-			Duration struct {
-				Text  string `json:"text"`
-				Value int    `json:"value"`
-			} `json:"duration"`
-			Status string `json:"status"`
-		} `json:"elements"`
-	} `json:"rows"`
-	Status string `json:"status"`
-}
-
 type JsonResponse struct {
 	Date     string
-	Stations []Item
+	Stations []Station
 }
 
-type JourneyJsonResponse struct {
+type GoogleJourneyResponse struct {
 	Distance string
 	Duration string
 }

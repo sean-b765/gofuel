@@ -31,7 +31,7 @@ func GetCheapest(c *gin.Context) {
 	// Get fuel data
 	var items, date = providers.GetWaPricesCurrent()
 
-	itemsWithinRadius := []types.Item{}
+	itemsWithinRadius := []types.Station{}
 
 	// If the distanceTo isn't within radius, skip
 	for idx := range items {
