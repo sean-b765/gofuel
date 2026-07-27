@@ -2,8 +2,6 @@ package routes
 
 import (
 	"errors"
-	"sort"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"seanboaden.dev/fuel/internal/providers"
@@ -29,13 +27,13 @@ func GetCheapest(c *gin.Context) {
 	}
 
 	// Get fuel data
-	var items, date = providers.GetWaPricesCurrent()
+	var items = providers.GetWaPricesCurrent()
 
 	itemsWithinRadius := []types.Station{}
 
 	// If the distanceTo isn't within radius, skip
 	for idx := range items {
-		stationCoordinates := [2]float64{util.ToFloat(items[idx].Latitude), util.ToFloat(items[idx].Longitude)}
+		stationCoordinates := [2]float64{items[idx].Latitude, items[idx].Longitude}
 
 		distanceTo := util.GetDistance(coordinates, stationCoordinates)
 
@@ -48,12 +46,12 @@ func GetCheapest(c *gin.Context) {
 		itemsWithinRadius = append(itemsWithinRadius, items[idx])
 	}
 
-	sort.Slice(itemsWithinRadius, func(i, j int) bool {
-		return itemsWithinRadius[i].Price < itemsWithinRadius[j].Price
-	})
+	// sort.Slice(itemsWithinRadius, func(i, j int) bool {
+	// 	return itemsWithinRadius[i].Price < itemsWithinRadius[j].Price
+	// })
 
 	// Group date and items into struct for json encode
-	response := types.JsonResponse{Stations: itemsWithinRadius, Date: strings.Fields(date)[0]}
+	response := types.JsonResponse{Stations: itemsWithinRadius}
 
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.JSON(200, response)

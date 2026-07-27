@@ -1,21 +1,27 @@
 package types
 
 type Station struct {
-	Title       string `xml:"title"`
-	Brand       string `xml:"brand"`
-	Date        string `xml:"date"`
-	Price       string `xml:"price"`
-	TradingName string `xml:"trading-name"`
-	Location    string `xml:"location"`
-	Address     string `xml:"address"`
-	Phone       string `xml:"phone"`
-	Latitude    string `xml:"latitude"`
-	Longitude   string `xml:"longitude"`
+	Id          string
+	Title       string
+	Brand       string
+	Date        string
+	Price       FuelPrice
+	TradingName string
+	Location    string
+	Address     string
+	Latitude    float64
+	Longitude   float64
 	DistanceTo  float64
 }
 
+type FuelPrice struct {
+	Ulp91  float32
+	Ulp95  float32
+	Ulp98  float32
+	Diesel float32
+}
+
 type JsonResponse struct {
-	Date     string
 	Stations []Station
 }
 
