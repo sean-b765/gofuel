@@ -3,8 +3,10 @@
 package providers
 
 import (
+	"os"
 	"strconv"
 
+	"seanboaden.dev/fuel/internal/auth"
 	"seanboaden.dev/fuel/internal/types"
 )
 
@@ -76,5 +78,10 @@ func TransformNswTasStations(stations []NswTasStation, prices []NswTasStationFue
 }
 
 func GetNswTasPricesCurrent() []types.Station {
+	token, err := auth.GetNswTasToken()
+	if err != nil {
+		return TransformNswTasStations(nil, nil)
+	}
+	_ = token
 	return TransformNswTasStations(nil, nil)
 }
