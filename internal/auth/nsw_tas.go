@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -54,7 +55,7 @@ func GetNswTasToken() (string, error) {
 }
 
 func fetchNewToken(apiKey, apiSecret string) (*NswTasToken, error) {
-	req, err := http.NewRequest("POST", nswTasTokenURL, strings.NewReader(""))
+	req, err := http.NewRequest("GET", nswTasTokenURL, strings.NewReader(""))
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +73,11 @@ func fetchNewToken(apiKey, apiSecret string) (*NswTasToken, error) {
 		return nil, fmt.Errorf("token request failed: %d", resp.StatusCode)
 	}
 
+	byteValue, _ := io.ReadAll(resp.Body)
+
 	var token NswTasToken
-	if err := json.NewDecoder(resp.Body).Decode(&token); err != nil {
+	err = json.Unmarshal(byteValue, &token)
+	if err != nil {
 		return nil, err
 	}
 

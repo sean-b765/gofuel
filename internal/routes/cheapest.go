@@ -2,6 +2,7 @@ package routes
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/gin-gonic/gin"
 	"seanboaden.dev/fuel/internal/providers"
@@ -27,7 +28,11 @@ func GetCheapest(c *gin.Context) {
 	}
 
 	// Get fuel data
-	var items = providers.GetWaPricesCurrent()
+	items := providers.GetWaPricesCurrent()
+
+	nswTas := providers.GetNswTasPricesCurrent()
+	println(len(nswTas))
+	items = slices.Concat(items, nswTas)
 
 	itemsWithinRadius := []types.Station{}
 
