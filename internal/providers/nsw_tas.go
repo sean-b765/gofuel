@@ -13,13 +13,14 @@ import (
 
 	"seanboaden.dev/fuel/internal/auth"
 	"seanboaden.dev/fuel/internal/types"
+	"seanboaden.dev/fuel/internal/util"
 )
 
 type NswTasStation struct {
 	Brandid   string   `json:"brandid"`
 	Stationid string   `json:"stationid"`
 	Brand     string   `json:"brand"`
-	Code      int      `json:"code"`
+	Code      string   `json:"code"`
 	Name      string   `json:"name"`
 	Address   string   `json:"address"`
 	State     string   `json:"state"`
@@ -55,25 +56,29 @@ func TransformNswTasStations(stations []NswTasStation, prices []NswTasStationFue
 	for _, s := range stations {
 		fuelPrices := types.FuelPrice{}
 		date := ""
-		for _, p := range pricesByStation[s.Code] {
+		stationCode, _ := strconv.Atoi(s.Code)
+		for _, p := range pricesByStation[stationCode] {
 			switch p.Fueltype {
 			case "U91":
 				fuelPrices.Ulp91 = float32(p.Price)
-				break
+			case "DL":
+				fuelPrices.Diesel = float32(p.Price)
 			case "P95":
 				fuelPrices.Ulp95 = float32(p.Price)
-				break
 			case "P98":
 				fuelPrices.Ulp98 = float32(p.Price)
-				break
 			default:
 				continue
 			}
-			date = p.Lastupdated
+			date = util.FormatDate("02/01/2006 15:04:05", p.Lastupdated)
+		}
+
+		if fuelPrices.Ulp91 == 0 {
+			continue
 		}
 
 		result = append(result, types.Station{
-			Id:        strconv.Itoa(s.Code),
+			Id:        s.Code,
 			Title:     s.Name,
 			Brand:     s.Brand,
 			Date:      date,

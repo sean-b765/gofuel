@@ -31,8 +31,10 @@ func GetCheapest(c *gin.Context) {
 	items := providers.GetWaPricesCurrent()
 
 	nswTas := providers.GetNswTasPricesCurrent()
-	println(len(nswTas))
 	items = slices.Concat(items, nswTas)
+
+	saQld := providers.GetSaQldPricesCurrent()
+	items = slices.Concat(items, saQld)
 
 	itemsWithinRadius := []types.Station{}
 
