@@ -31,7 +31,7 @@ resource "aws_dynamodb_table" "public" {
     hash_key           = "SubRegionGeohash"
     range_key          = "TownGeohash"
     projection_type    = "INCLUDE"
-    non_key_attributes = ["StationId", "Title", "Brand", "Address", "Ulp91", "Ulp95", "Ulp98", "Diesel"]
+    non_key_attributes = ["StationId", "Title", "Brand", "Address", "Latitude", "Longitude", "Date", "Ulp91", "Ulp95", "Ulp98", "Diesel"]
     read_capacity      = 2
     write_capacity     = 5
   }

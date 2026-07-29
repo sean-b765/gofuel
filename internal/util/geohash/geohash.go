@@ -10,6 +10,33 @@ import (
 )
 
 const shardCount = 10
+const subRegionPrecision = 4
+
+/*
+ * Returns the precision-4 geohashes covering the bounding box
+ * defined by top-left and bottom-right corners.
+ */
+func CoveringHashes(tlLat, tlLng, brLat, brLng float64) []string {
+	start := geohash.BoundingBox(geohash.EncodeWithPrecision(tlLat, tlLng, subRegionPrecision))
+	latStep := start.MaxLat - start.MinLat
+	lngStep := start.MaxLng - start.MinLng
+
+	seen := map[string]struct{}{}
+	hashes := []string{}
+
+	for lat := start.MinLat + latStep/2; lat+latStep/2 >= brLat; lat -= latStep {
+		for lng := start.MinLng + lngStep/2; lng-lngStep/2 <= brLng; lng += lngStep {
+			h := geohash.EncodeWithPrecision(lat, lng, subRegionPrecision)
+			if _, ok := seen[h]; ok {
+				continue
+			}
+			seen[h] = struct{}{}
+			hashes = append(hashes, h)
+		}
+	}
+
+	return hashes
+}
 
 func CreateGeohash(s types.Station) types.StationItem {
 	p1 := geohash.EncodeWithPrecision(s.Latitude, s.Longitude, 1)

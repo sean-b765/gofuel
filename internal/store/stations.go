@@ -2,10 +2,12 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -16,9 +18,13 @@ import (
 )
 
 const (
-	batchSize   = 25
-	maxAttempts = 10
+	batchSize    = 25
+	maxAttempts  = 10
+	maxCells     = 100
+	gsiSubRegion = "GSI_SubRegion"
 )
+
+var ErrBoundsTooLarge = errors.New("bounding box too large")
 
 var (
 	client     *dynamodb.Client
@@ -31,6 +37,83 @@ func init() {
 		panic(fmt.Sprintf("unable to load AWS config: %v", err))
 	}
 	client = dynamodb.NewFromConfig(cfg)
+}
+
+func GetStationsInBounds(tl, br [2]float64) ([]types.Station, error) {
+	tableName := os.Getenv("DDB_TABLE_STATIONS")
+	if tableName == "" {
+		return nil, fmt.Errorf("DDB_TABLE_STATIONS not set")
+	}
+
+	hashes := geohash.CoveringHashes(tl[0], tl[1], br[0], br[1])
+	if len(hashes) > maxCells {
+		return nil, ErrBoundsTooLarge
+	}
+
+	stations := []types.Station{}
+	for _, h := range hashes {
+		items, err := querySubRegion(tableName, h)
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range items {
+			if item.Latitude > tl[0] || item.Latitude < br[0] || item.Longitude < tl[1] || item.Longitude > br[1] {
+				continue
+			}
+			stations = append(stations, toStation(item))
+		}
+	}
+
+	return stations, nil
+}
+
+func querySubRegion(tableName, hash string) ([]types.StationItem, error) {
+	items := []types.StationItem{}
+	var startKey map[string]awstypes.AttributeValue
+
+	for {
+		out, err := client.Query(context.Background(), &dynamodb.QueryInput{
+			TableName:              aws.String(tableName),
+			IndexName:              aws.String(gsiSubRegion),
+			KeyConditionExpression: aws.String("SubRegionGeohash = :hash"),
+			ExpressionAttributeValues: map[string]awstypes.AttributeValue{
+				":hash": &awstypes.AttributeValueMemberS{Value: hash},
+			},
+			ExclusiveStartKey: startKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("query subregion %s: %w", hash, err)
+		}
+
+		page := []types.StationItem{}
+		if err := attributevalue.UnmarshalListOfMaps(out.Items, &page); err != nil {
+			return nil, fmt.Errorf("unmarshal subregion %s: %w", hash, err)
+		}
+		items = append(items, page...)
+
+		if len(out.LastEvaluatedKey) == 0 {
+			return items, nil
+		}
+		startKey = out.LastEvaluatedKey
+	}
+}
+
+func toStation(item types.StationItem) types.Station {
+	return types.Station{
+		Id:        item.StationId,
+		Title:     item.Title,
+		Brand:     item.Brand,
+		Address:   item.Address,
+		Date:      item.Date,
+		Latitude:  item.Latitude,
+		Longitude: item.Longitude,
+		Price: types.FuelPrice{
+			Ulp91:  item.Ulp91,
+			Ulp95:  item.Ulp95,
+			Ulp98:  item.Ulp98,
+			Diesel: item.Diesel,
+		},
+	}
 }
 
 func PutStations(stations []types.Station) error {

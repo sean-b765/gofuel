@@ -21,7 +21,7 @@ air
   - `nsw_tas.go` — NSW+TAS FuelAPI (OAuth bearer + apikey headers)
   - `sa_qld.go` — SA + QLD Fuel Pricing Information Scheme
   - `providers.go` — `FetchAllStations()` parallel aggregator
-- `internal/routes` — Gin route handlers (`cheapest.go`, `journey.go`, `health.go`)
+- `internal/routes` — Gin route handlers (`current.go`, `journey.go`, `health.go`)
 - `internal/store` — DynamoDB persistence (`stations.go` → `PutStations`)
 - `internal/types` — shared domain types (`Station`, `StationItem`, `FuelPrice`)
 - `internal/util`

@@ -21,7 +21,7 @@ func SetupRouter() *gin.Engine {
 
 	r.GET("/ping", Health)
 
-	r.GET("/cheapest/:coordinates", GetCheapest)
+	r.GET("/current", GetCurrent)
 	r.GET("/journey", GetJourney)
 
 	return r

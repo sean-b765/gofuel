@@ -11,7 +11,6 @@ type Station struct {
 	Address     string
 	Latitude    float64
 	Longitude   float64
-	DistanceTo  float64
 }
 
 type FuelPrice struct {
