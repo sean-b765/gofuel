@@ -26,21 +26,20 @@ type JsonResponse struct {
 }
 
 type StationItem struct {
-	PK        string // geohash precision 1
-	SK        string // geohash precision 8
-	GSI1PK    string // geohash precision 4
-	GSI1SK    string // geohash precision 8
-	StationId string
-	Title     string
-	Brand     string
-	Address   string
-	Latitude  float64
-	Longitude float64
-	Ulp91     float32
-	Ulp95     float32
-	Ulp98     float32
-	Diesel    float32
-	Date      string
+	RegionGeohash    string  `json:"region_geohash"`     // PK (precision 1)
+	TownGeohash      string  `json:"town_geohash"`       // SK / GSI1SK (precision 8)
+	SubRegionGeohash string  `json:"sub_region_geohash"` // GSI1PK (precision 4)
+	StationId        string  `json:"station_id"`
+	Title            string  `json:"title"`
+	Brand            string  `json:"brand"`
+	Address          string  `json:"address"`
+	Latitude         float64 `json:"latitude"`
+	Longitude        float64 `json:"longitude"`
+	Ulp91            float32 `json:"ulp91"`
+	Ulp95            float32 `json:"ulp95"`
+	Ulp98            float32 `json:"ulp98"`
+	Diesel           float32 `json:"diesel"`
+	Date             string  `json:"date"`
 }
 
 type GoogleJourneyResponse struct {
