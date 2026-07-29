@@ -1,10 +1,40 @@
 resource "aws_dynamodb_table" "public" {
-  name           = "fuelprices"
+  name           = "Stations"
   billing_mode   = "PROVISIONED"
   read_capacity  = 2
-  write_capacity = 2
-  hash_key       = "UserId"
-  range_key      = "GameTitle"
+  write_capacity = 5
+
+  tags = {
+    Project = "gofuel"
+  }
+
+  hash_key  = "RegionGeohash"
+  range_key = "TownGeohash"
+
+  attribute {
+    name = "RegionGeohash"
+    type = "S"
+  }
+
+  attribute {
+    name = "TownGeohash"
+    type = "S"
+  }
+
+  attribute {
+    name = "SubRegionGeohash"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name               = "GSI_SubRegion"
+    hash_key           = "SubRegionGeohash"
+    range_key          = "TownGeohash"
+    projection_type    = "INCLUDE"
+    non_key_attributes = ["StationId", "Title", "Brand", "Address", "Ulp91", "Ulp95", "Ulp98", "Diesel"]
+    read_capacity      = 2
+    write_capacity     = 5
+  }
 }
 
 resource "aws_api_gateway_rest_api" "this" {
