@@ -1,8 +1,6 @@
 resource "aws_dynamodb_table" "public" {
-  name           = "Stations"
-  billing_mode   = "PROVISIONED"
-  read_capacity  = 2
-  write_capacity = 5
+  name         = "Stations"
+  billing_mode = "PAY_PER_REQUEST"
 
   tags = {
     Project = "gofuel"
@@ -32,8 +30,6 @@ resource "aws_dynamodb_table" "public" {
     range_key          = "TownGeohash"
     projection_type    = "INCLUDE"
     non_key_attributes = ["StationId", "Title", "Brand", "Address", "Latitude", "Longitude", "Date", "Ulp91", "Ulp95", "Ulp98", "Diesel"]
-    read_capacity      = 2
-    write_capacity     = 5
   }
 }
 

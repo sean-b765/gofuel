@@ -2,7 +2,9 @@ package routes
 
 import (
 	"errors"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -15,13 +17,18 @@ import (
  * Returns stations with current prices within a bounding box
  */
 func GetCurrent(c *gin.Context) {
-	tl, err := util.ParseCoordinates(c.Query("topLeft"))
+	start := time.Now()
+	tlQ := c.Query("topLeft")
+	brQ := c.Query("bottomRight")
+	log.Printf("[current] request topLeft=%s bottomRight=%s", tlQ, brQ)
+
+	tl, err := util.ParseCoordinates(tlQ)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid topLeft: " + err.Error()})
 		return
 	}
 
-	br, err := util.ParseCoordinates(c.Query("bottomRight"))
+	br, err := util.ParseCoordinates(brQ)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid bottomRight: " + err.Error()})
 		return
@@ -38,9 +45,11 @@ func GetCurrent(c *gin.Context) {
 		return
 	}
 	if err != nil {
+		log.Printf("[current] error after %v: %v", time.Since(start), err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load stations"})
 		return
 	}
 
+	log.Printf("[current] done: %d stations in %v (%s,%s)", len(stations), time.Since(start), tlQ, brQ)
 	c.JSON(http.StatusOK, types.JsonResponse{Stations: stations})
 }

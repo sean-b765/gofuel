@@ -33,23 +33,37 @@ air
 
 Env var `DDB_TABLE_STATIONS` selects the table name.
 
-| Key         | Field             | Composition             | Purpose                                 |
-|-------------|-------------------|-------------------------|-----------------------------------------|
-| PK          | `RegionGeohash`   | `<shard 1-10>#<p1>`    | World / region queries (sharded)        |
-| SK          | `TownGeohash`     | `<p8>#<station_id>`    | Fine-grained range + uniqueness        |
-| GSI1 PK     | `SubRegionGeohash`| `<p4>`                 | City-level queries (no shard)          |
-| GSI1 SK     | `TownGeohash`     | `<p8>#<station_id>`    | Town-level `begins_with` queries       |
+| Key     | Field              | Composition         | Purpose                          |
+| ------- | ------------------ | ------------------- | -------------------------------- |
+| PK      | `RegionGeohash`    | `<shard 1-10>#<p1>` | World / region queries (sharded) |
+| SK      | `TownGeohash`      | `<p8>#<station_id>` | Fine-grained range + uniqueness  |
+| GSI1 PK | `SubRegionGeohash` | `<p4>`              | City-level queries (no shard)    |
+| GSI1 SK | `TownGeohash`      | `<p8>#<station_id>` | Town-level `begins_with` queries |
 
 Other attributes: `StationId`, `Title`, `Brand`, `Address`, `Latitude`,
 `Longitude`, `Ulp91`, `Ulp95`, `Ulp98`, `Diesel`, `Date`.
 
 Query patterns:
 
-- **PK only** → fan out 10 parallel queries (one per shard), truncate.
-  Used for Australia-wide map (truncated subset).
-- **PK + SK** → region/bbox queries, SK range-filtered by geohash prefix.
-- **GSI1PK only** → city-level, cover bbox with P4 cells.
-- **GSI1PK + GSI1SK (begins_with)** → town-level, P4 + P6/P7 prefix.
+`GET /current` picks a geohash precision from the bounding-box diagonal, then
+fans out parallel DynamoDB queries (bounded concurrency) and filters to the
+exact box in app code.
+
+| diagonal    | precision | shards | path                                       |
+|-------------|-----------|--------|--------------------------------------------|
+| ≥ 2000 km   | p1        | 2/10   | base table, PK only                        |
+| 400–2000 km | p2        | 4/10   | base table, PK + `begins_with(SK, p2cell)` |
+| 80–400 km   | p3        | 8/10   | base table, PK + `begins_with(SK, p3cell)` |
+| < 80 km     | p4        | 10/10  | `GSI_SubRegion`, PK EQ                     |
+
+- **p4** (city): one `Query` per covering cell against `GSI_SubRegion`
+  (`SubRegionGeohash = :cell`), no limit — small bbox, full result set.
+- **p1–p3** (base table): for each covering cell, fan out across a subset of
+  shards (shards are keyed by station-ID hash, so a subset is a
+  geographically-distributed deterministic sample / virtual limit). PK is
+  `<shard>#<p1>`; SK is `begins_with(TownGeohash, <cell>)` at p2/p3.
+- All queries run in parallel via a bounded worker pool; results are filtered
+  to the exact bounding box in app code. On-demand capacity absorbs spikes.
 
 ### Write path
 
@@ -72,4 +86,3 @@ Throttle note: the table is provisioned-capacity; per-cron runtime is bound by
 - `NSW_TAS_API_KEY`, `NSW_TAS_API_SECRET` — OneGov NSW FuelAPI creds
 - `SA_API_KEY`, `QLD_API_KEY` — SA / QLD Fuel Pricing Information Scheme keys
 - `DDB_TABLE_STATIONS` — DynamoDB Stations table name
-
