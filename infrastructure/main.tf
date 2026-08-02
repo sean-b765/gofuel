@@ -33,6 +33,27 @@ resource "aws_dynamodb_table" "public" {
   }
 }
 
+resource "aws_dynamodb_table" "auth" {
+  name         = "Providers-Auth"
+  billing_mode = "PAY_PER_REQUEST"
+
+  tags = {
+    Project = "gofuel"
+  }
+
+  hash_key = "provider"
+
+  attribute {
+    name = "provider"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+}
+
 resource "aws_api_gateway_rest_api" "this" {
   name = "gofuel"
 
