@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"seanboaden.dev/fuel/internal/auth"
+	"seanboaden.dev/fuel/internal/store"
 	"seanboaden.dev/fuel/internal/types"
 	"seanboaden.dev/fuel/internal/util"
 )
@@ -93,7 +93,7 @@ func TransformNswTasStations(stations []NswTasStation, prices []NswTasStationFue
 }
 
 func GetNswTasPricesCurrent() []types.Station {
-	token, err := auth.GetNswTasToken()
+	token, err := store.GetNswTasToken()
 	if err != nil {
 		return TransformNswTasStations(nil, nil)
 	}

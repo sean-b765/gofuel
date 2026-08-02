@@ -22,12 +22,11 @@ air
   - `sa_qld.go` — SA + QLD Fuel Pricing Information Scheme
   - `providers.go` — `FetchAllStations()` parallel aggregator
 - `internal/routes` — Gin route handlers (`current.go`, `journey.go`, `health.go`)
-- `internal/store` — DynamoDB persistence (`stations.go` → `PutStations`)
+- `internal/store` — DynamoDB persistence (`stations.go` → `PutStations`, `auth.go` → `GetNswTasToken`)
 - `internal/types` — shared domain types (`Station`, `StationItem`, `FuelPrice`)
 - `internal/util`
   - `geohash/` — `CreateGeohash(Station) StationItem` (DynamoDB key generation)
   - `haversine.go`, `conversions.go`, `parse.go` — misc helpers
-- `internal/auth` — `nsw_tas.go` (OAuth token fetch + cache in `auth.json`)
 
 ### DynamoDB table: `Stations`
 
@@ -65,6 +64,24 @@ exact box in app code.
 - All queries run in parallel via a bounded worker pool; results are filtered
   to the exact bounding box in app code. On-demand capacity absorbs spikes.
 
+### DynamoDB table: `Providers-Auth`
+
+Env var `DDB_TABLE_AUTH` selects the table name. Used by
+`internal/store/auth.go` to cache the NSW/TAS OneGov access token so the OAuth
+client-credentials flow runs only when the cached token is missing or expired.
+
+| Key | Field     | Value        | Purpose                          |
+| --- | --------- | ------------ | -------------------------------- |
+| PK  | `provider` | `nsw_tas`    | Single-row cache per provider    |
+
+Other attributes: `access_token`, `expires_in`, `issued_at`, `ttl`.
+
+`ttl` = `issued_at/1000 + expires_in` (epoch seconds); DynamoDB TTL is enabled
+on the `ttl` attribute, so expired tokens are eventually reaped automatically.
+The read path (`store.GetNswTasToken`) still checks expiry in-app to avoid
+using a token in the TTL grace window — if found and not expired it is reused,
+otherwise a fresh token is fetched and overwritten via `PutItem`.
+
 ### Write path
 
 `cmd/cron/main.go` is the refresh job: calls `providers.FetchAllStations()` →
@@ -86,3 +103,4 @@ Throttle note: the table is provisioned-capacity; per-cron runtime is bound by
 - `NSW_TAS_API_KEY`, `NSW_TAS_API_SECRET` — OneGov NSW FuelAPI creds
 - `SA_API_KEY`, `QLD_API_KEY` — SA / QLD Fuel Pricing Information Scheme keys
 - `DDB_TABLE_STATIONS` — DynamoDB Stations table name
+- `DDB_TABLE_AUTH` — DynamoDB auth table name (OAuth token cache; PK `provider`, TTL on `ttl`)
