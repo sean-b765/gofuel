@@ -8,6 +8,7 @@ tmp
 # .tfstate files (Contains sensitive data)
 *.tfstate
 *.tfstate.*
+infrastructure/*.tfstate
 
 # Crash log files
 crash.log
