@@ -15,12 +15,13 @@ air
 
 - `cmd/api/dev` — local Gin server entry point
 - `cmd/api/prod` — Lambda + gin-api-proxy entry point (API Gateway)
-- `cmd/cron` — refresh job: fetches from providers, writes to DynamoDB
+- `cmd/cron` — refresh job: dual-mode (Lambda via EventBridge Scheduler, or local via `PROVIDER`/`DAY` env)
+- `internal/cron` — `cron.go` (`Event` + `Run`): validates payload, fetches one provider, writes to DynamoDB
 - `internal/providers` — upstream fuel price fetchers
-  - `wa.go` — WA FuelWatch (RSS/XML)
+  - `wa.go` — WA FuelWatch (RSS/XML); `GetWaPrices(day)` where day is `""` (today) or `"tomorrow"`
   - `nsw_tas.go` — NSW+TAS FuelAPI (OAuth bearer + apikey headers)
   - `sa_qld.go` — SA + QLD Fuel Pricing Information Scheme
-  - `providers.go` — `FetchAllStations()` parallel aggregator
+  - `providers.go` — `FetchAllStations()` parallel aggregator + `FetchProviderAndDay(provider, day)`
 - `internal/routes` — Gin route handlers (`current.go`, `journey.go`, `health.go`)
 - `internal/store` — DynamoDB persistence (`stations.go` → `PutStations`, `auth.go` → `GetNswTasToken`)
 - `internal/types` — shared domain types (`Station`, `StationItem`, `FuelPrice`)
@@ -84,12 +85,50 @@ otherwise a fresh token is fetched and overwritten via `PutItem`.
 
 ### Write path
 
-`cmd/cron/main.go` is the refresh job: calls `providers.FetchAllStations()` →
-`store.PutStations(items)`. `PutStations` dedupes by `StationId` (first-wins),
-marshals each via `geohash.CreateGeohash` + `attributevalue.MarshalMap`, chunks
-into 25-item `BatchWriteItem` batches (DynamoDB hard limit), writes sequentially
-with a retry loop for throttled / unprocessed items (exponential backoff,
-100ms→5s cap, 10 attempts).
+`cmd/cron/main.go` is the refresh entry point. In Lambda mode it receives an
+`internal/cron.Event` from EventBridge Scheduler, validates it, calls
+`providers.FetchProviderAndDay(provider, day)`, then `store.PutStations(items)`.
+In local mode it reads `PROVIDER`/`DAY` env vars and does the same.
+
+`PutStations` dedupes by `StationId` (first-wins), marshals each via
+`geohash.CreateGeohash` + `attributevalue.MarshalMap`, chunks into 25-item
+`BatchWriteItem` batches (DynamoDB hard limit), writes sequentially with a retry
+loop for throttled / unprocessed items (exponential backoff, 100ms→5s cap,
+10 attempts).
+
+### Cron / EventBridge schedules
+
+The cron Lambda (`gofuel-cron`) is invoked by EventBridge Scheduler. Each
+schedule carries a constant JSON payload:
+
+```json
+{"provider": "wa", "day": ""}
+```
+
+`provider` is required (`wa` | `nsw_tas` | `sa_qld`). `day` is `""` (today) or
+`"tomorrow"` (WA FuelWatch only; ignored by other providers).
+
+All schedules use `schedule_expression_timezone = "Australia/Perth"`:
+
+| Schedule | Expression | Payload | Cadence |
+|----------|------------|---------|---------|
+| `gofuel-cron-wa-tomorrow` | `cron(0 16 * * ? *)` | `{"provider":"wa","day":"tomorrow"}` | Daily, 4PM AWST |
+| `gofuel-cron-nsw-tas` | `cron(0 5,9,12,15,17 * * ? *)` | `{"provider":"nsw_tas","day":""}` | 5×/day |
+| `gofuel-cron-sa-qld` | `cron(0 5,9,12,15,17 * * ? *)` | `{"provider":"sa_qld","day":""}` | 5×/day |
+
+Validation in `internal/cron.Run`: unknown `provider` or `day` returns an error
+(the Lambda invocation is marked failed, so EventBridge retry policy applies).
+
+Local run: `PROVIDER=wa DAY=tomorrow go run ./cmd/cron`.
+
+### Docker (multi-target)
+
+The `Dockerfile` builds either entry point via `--build-arg FUNCTION=...`:
+
+- API (default): `docker build -t gofuel .`
+- Cron: `docker build --build-arg FUNCTION=cron -t gofuel:cron-latest .`
+
+Cron images are tagged `gofuel:cron-*` in the same ECR repo as the API.
 
 Throttle note: the table is provisioned-capacity; per-cron runtime is bound by
 `items / WriteCapacityUnits-per-sec`. For large providers under low WCU, raise
@@ -104,3 +143,5 @@ Throttle note: the table is provisioned-capacity; per-cron runtime is bound by
 - `SA_API_KEY`, `QLD_API_KEY` — SA / QLD Fuel Pricing Information Scheme keys
 - `DDB_TABLE_STATIONS` — DynamoDB Stations table name
 - `DDB_TABLE_AUTH` — DynamoDB auth table name (OAuth token cache; PK `provider`, TTL on `ttl`)
+- `PROVIDER` — (local cron only) provider to refresh (`wa` | `nsw_tas` | `sa_qld`)
+- `DAY` — (local cron only) WA day param (`""` | `tomorrow`)

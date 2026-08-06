@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"seanboaden.dev/fuel/internal/types"
@@ -59,13 +60,20 @@ func transformWaStations(items []WaStation) []types.Station {
 	return stations
 }
 
-// FuelWatch API from WA
-// Get the latest fuel prices. Returns the item array and the date
-func GetWaPricesCurrent() []types.Station {
-	resp, err := http.Get("https://www.fuelwatch.wa.gov.au/fuelwatch/fuelWatchRSS?")
-	if err != nil {
-		panic("Error with http.Get")
+// FuelWatch API from WA.
+// day is "" (today) or "tomorrow".
+func GetWaPrices(day string) []types.Station {
+	url := "https://www.fuelwatch.wa.gov.au/fuelwatch/fuelWatchRSS?"
+	if day == "tomorrow" {
+		url += "day=tomorrow"
 	}
+
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Printf("[wa] http.Get: %v", err)
+		return nil
+	}
+	defer resp.Body.Close()
 
 	byteValue, _ := io.ReadAll(resp.Body)
 
@@ -73,18 +81,4 @@ func GetWaPricesCurrent() []types.Station {
 	xml.Unmarshal(byteValue, &response)
 
 	return transformWaStations(response.Channel.Items)
-}
-
-func GetWaPricesTomorrow() ([]WaStation, string) {
-	resp, err := http.Get("https://www.fuelwatch.wa.gov.au/fuelwatch/fuelWatchRSS?day=tomorrow")
-	if err != nil {
-		panic("Error with http.Get")
-	}
-
-	byteValue, _ := io.ReadAll(resp.Body)
-
-	var response rss
-	xml.Unmarshal(byteValue, &response)
-
-	return response.Channel.Items, response.Channel.Description
 }

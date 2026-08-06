@@ -1,12 +1,13 @@
 FROM golang:alpine as builder
 
+ARG FUNCTION=api/prod
 WORKDIR /app
 
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 COPY . .
-RUN go build -o main ./cmd/api/prod
+RUN go build -o main ./cmd/${FUNCTION}
 
 # Clean image on amazon linux 2023 lambda
 FROM public.ecr.aws/lambda/provided:al2023
