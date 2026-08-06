@@ -16,6 +16,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awstypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+
+	"seanboaden.dev/fuel/internal/secrets"
 )
 
 const (
@@ -48,8 +50,8 @@ func GetNswTasToken() (string, error) {
 		return cached.AccessToken, nil
 	}
 
-	apiKey := os.Getenv("NSW_TAS_API_KEY")
-	apiSecret := os.Getenv("NSW_TAS_API_SECRET")
+	apiKey := secrets.Get("NSW_TAS_API_KEY")
+	apiSecret := secrets.Get("NSW_TAS_API_SECRET")
 
 	token, err := fetchNewToken(apiKey, apiSecret)
 	if err != nil {

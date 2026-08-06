@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"os"
 	"strconv"
 
+	"seanboaden.dev/fuel/internal/secrets"
 	"seanboaden.dev/fuel/internal/types"
 	"seanboaden.dev/fuel/internal/util"
 )
@@ -124,14 +124,14 @@ func GetSaQldPricesCurrent() []types.Station {
 
 	result = append(result, fetchSaQld(
 		"https://fppdirectapi-prod.safuelpricinginformation.com.au",
-		os.Getenv("SA_API_KEY"),
+		secrets.Get("SA_API_KEY"),
 		2,
 		189,
 	)...)
 
 	result = append(result, fetchSaQld(
 		"https://fppdirectapi-prod.fuelpricesqld.com.au",
-		os.Getenv("QLD_API_KEY"),
+		secrets.Get("QLD_API_KEY"),
 		3,
 		1,
 	)...)

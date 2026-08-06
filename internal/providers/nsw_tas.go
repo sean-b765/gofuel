@@ -5,12 +5,12 @@ package providers
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 
+	"seanboaden.dev/fuel/internal/secrets"
 	"seanboaden.dev/fuel/internal/store"
 	"seanboaden.dev/fuel/internal/types"
 	"seanboaden.dev/fuel/internal/util"
@@ -103,7 +103,7 @@ func GetNswTasPricesCurrent() []types.Station {
 		return TransformNswTasStations(nil, nil)
 	}
 
-	req.Header.Set("apikey", os.Getenv("NSW_TAS_API_KEY"))
+	req.Header.Set("apikey", secrets.Get("NSW_TAS_API_KEY"))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("transactionid", uuid.NewString())
 	req.Header.Set("requesttimestamp", time.Now().Format("02/01/2006 3:04:05 PM"))

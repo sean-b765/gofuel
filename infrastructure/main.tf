@@ -58,6 +58,36 @@ resource "aws_dynamodb_table" "auth" {
   lifecycle { prevent_destroy = true }
 }
 
+# ---------------------------------------------------------------------------
+# SSM Parameter Store: provider API keys (plaintext, values set out-of-band)
+# ---------------------------------------------------------------------------
+
+locals {
+  secret_params = toset([
+    "maps_key",
+    "nsw_tas_api_key",
+    "nsw_tas_api_secret",
+    "sa_api_key",
+    "qld_api_key",
+  ])
+}
+
+resource "aws_ssm_parameter" "secrets" {
+  for_each = local.secret_params
+
+  name  = "/gofuel/${each.key}"
+  type  = "String"
+  value = "change-me"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+
+  tags = {
+    Project = "gofuel"
+  }
+}
+
 resource "aws_api_gateway_rest_api" "this" {
   name = "gofuel"
 
@@ -124,30 +154,100 @@ resource "aws_api_gateway_rest_api" "this" {
 #   xray_tracing_enabled = false
 # }
 
-# resource "aws_lambda_function" "this" {
-#   architectures = ["x86_64"]
-#   description   = "GoFuel API"
-#   function_name = "gofuel"
-#   image_uri     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/gofuel:055c4322d52ef7bac7bc04b0b17546487d286982"
-#   memory_size   = 128
-#   package_type  = "Image"
-#   role          = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/service-role/gofuel-role-jw1dcxrc"
-#   runtime       = null
-#   tags          = {}
-#   timeout       = 3
-#   ephemeral_storage {
-#     size = 512
-#   }
-#   logging_config {
-#     application_log_level = null
-#     log_format            = "Text"
-#     log_group             = "/aws/lambda/gofuel"
-#     system_log_level      = null
-#   }
-#   tracing_config {
-#     mode = "Active"
-#   }
-# }
+# ---------------------------------------------------------------------------
+# API: Lambda + IAM (image_uri managed by CI; config managed by Terraform)
+# ---------------------------------------------------------------------------
+
+resource "aws_iam_role" "api" {
+  name = "gofuel-api-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Project = "gofuel"
+  }
+}
+
+resource "aws_iam_role_policy" "api" {
+  name = "gofuel-api-policy"
+  role = aws_iam_role.api.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+        ]
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/gofuel*:*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["dynamodb:Query"]
+        Resource = aws_dynamodb_table.public.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameters",
+          "ssm:GetParameter",
+        ]
+        Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/gofuel/*"
+      },
+    ]
+  })
+}
+
+resource "aws_lambda_function" "this" {
+  architectures = ["x86_64"]
+  description   = "GoFuel API"
+  function_name = "gofuel"
+  image_uri     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/gofuel:latest"
+  memory_size   = 128
+  package_type  = "Image"
+  role          = aws_iam_role.api.arn
+  runtime       = null
+  timeout       = 30
+
+  environment {
+    variables = {
+      DDB_TABLE_STATIONS = aws_dynamodb_table.public.name
+      BASE_PATH          = var.base_path
+      ENVIRONMENT        = "production"
+    }
+  }
+
+  ephemeral_storage {
+    size = 512
+  }
+
+  logging_config {
+    log_format = "Text"
+    log_group  = "/aws/lambda/gofuel"
+  }
+
+  tracing_config {
+    mode = "Active"
+  }
+
+  lifecycle {
+    ignore_changes = [image_uri]
+  }
+
+  tags = {
+    Project = "gofuel"
+  }
+}
 
 # ---------------------------------------------------------------------------
 # Cron: Lambda + IAM + EventBridge Scheduler
@@ -202,6 +302,14 @@ resource "aws_iam_role_policy" "cron" {
         ]
         Resource = aws_dynamodb_table.auth.arn
       },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameters",
+          "ssm:GetParameter",
+        ]
+        Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/gofuel/*"
+      },
     ]
   })
 }
@@ -221,6 +329,7 @@ resource "aws_lambda_function" "cron" {
     variables = {
       DDB_TABLE_STATIONS = aws_dynamodb_table.public.name
       DDB_TABLE_AUTH     = aws_dynamodb_table.auth.name
+      ENVIRONMENT        = "production"
     }
   }
 

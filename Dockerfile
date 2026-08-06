@@ -12,10 +12,8 @@ RUN go build -o main ./cmd/${FUNCTION}
 # Clean image on amazon linux 2023 lambda
 FROM public.ecr.aws/lambda/provided:al2023
 
-ARG MAPS_KEY
 ARG BASE_PATH
 
-ENV MAPS_KEY=${MAPS_KEY}
 ENV BASE_PATH=${BASE_PATH}
 ENV ENVIRONMENT="production"
 

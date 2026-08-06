@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 
 	"github.com/tidwall/gjson"
+
+	"seanboaden.dev/fuel/internal/secrets"
 )
 
 func GetJourney(origin, destination string) (string, string) {
-	url := "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" + origin + "&destinations=" + destination + "&mode=driving&language=en-US&key=" + os.Getenv("MAPS_KEY")
+	url := "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" + origin + "&destinations=" + destination + "&mode=driving&language=en-US&key=" + secrets.Get("MAPS_KEY")
 	fmt.Println(url)
 	resp, err := http.Get(url)
 

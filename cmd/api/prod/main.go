@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -10,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
 	"seanboaden.dev/fuel/internal/routes"
+	"seanboaden.dev/fuel/internal/secrets"
 )
 
 var adapter *ginadapter.GinLambda
@@ -20,6 +22,9 @@ func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 }
 
 func main() {
+	if err := secrets.Load([]string{"MAPS_KEY"}); err != nil {
+		log.Fatalf("secrets: %v", err)
+	}
 	gin.SetMode(gin.ReleaseMode)
 	r := routes.SetupRouter()
 

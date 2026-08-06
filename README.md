@@ -137,7 +137,8 @@ Throttle note: the table is provisioned-capacity; per-cron runtime is bound by
 ### Environment variables (see `.env.example`)
 
 - `BASE_PATH` — API route prefix (Lambda)
-- `ENVIRONMENT` — `local` / `prod`
+- `ENVIRONMENT` — `local` / `prod`; when `local`, secrets are read from env
+  vars, otherwise from SSM Parameter Store
 - `MAPS_KEY` — Google Maps API key (journey endpoint)
 - `NSW_TAS_API_KEY`, `NSW_TAS_API_SECRET` — OneGov NSW FuelAPI creds
 - `SA_API_KEY`, `QLD_API_KEY` — SA / QLD Fuel Pricing Information Scheme keys
@@ -145,3 +146,22 @@ Throttle note: the table is provisioned-capacity; per-cron runtime is bound by
 - `DDB_TABLE_AUTH` — DynamoDB auth table name (OAuth token cache; PK `provider`, TTL on `ttl`)
 - `PROVIDER` — (local cron only) provider to refresh (`wa` | `nsw_tas` | `sa_qld`)
 - `DAY` — (local cron only) WA day param (`""` | `tomorrow`)
+
+In prod the five API keys live in SSM Parameter Store under `/gofuel/*`:
+
+| Env var (local)         | SSM path                     |
+| ----------------------- | ---------------------------- |
+| `MAPS_KEY`              | `/gofuel/maps_key`           |
+| `NSW_TAS_API_KEY`       | `/gofuel/nsw_tas_api_key`    |
+| `NSW_TAS_API_SECRET`    | `/gofuel/nsw_tas_api_secret` |
+| `SA_API_KEY`            | `/gofuel/sa_api_key`         |
+| `QLD_API_KEY`           | `/gofuel/qld_api_key`        |
+
+Set each once after `terraform apply`:
+
+```
+aws ssm put-parameter --name /gofuel/maps_key --type String --value "..." --overwrite
+```
+
+The `internal/secrets` package fetches them once at startup (`secrets.Load`) and
+caches them in memory (`secrets.Get`).
