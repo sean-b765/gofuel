@@ -40,17 +40,25 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
           BASE_PATH: ${{ vars.BASE_PATH }}
         run: |
-          # Build a docker container and
-          # push it to ECR so that our lambda can pull the newest image
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest --build-arg BASE_PATH=$BASE_PATH .
+          # Build the API image (default FUNCTION=api/prod) and the cron image
+          # (FUNCTION=cron), tag each, and push to ECR so lambdas can pull.
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+                       -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+                       --build-arg BASE_PATH=$BASE_PATH .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:cron-$IMAGE_TAG \
+                       -t $ECR_REGISTRY/$ECR_REPOSITORY:cron-latest \
+                       --build-arg FUNCTION=cron .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY --all-tags
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "api-image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "cron-image=$ECR_REGISTRY/$ECR_REPOSITORY:cron-$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       - name: Deploy to Lambda with new build image
         id: deploy-image
         env:
-          LAMBDA_ARN: ${{ vars.LAMBDA_ARN }}
-          IMAGE_URI: ${{ steps.build-image.outputs.image }}
-          aws-region: ${{ env.AWS_REGION }}
+          LAMBDA_API_ARN: ${{ vars.LAMBDA_API_ARN }}
+          LAMBDA_CRON_ARN: ${{ vars.LAMBDA_CRON_ARN }}
+          API_IMAGE: ${{ steps.build-image.outputs.api-image }}
+          CRON_IMAGE: ${{ steps.build-image.outputs.cron-image }}
         run: |
-          aws lambda update-function-code --function-name $LAMBDA_ARN --image-uri $IMAGE_URI --region $AWS_REGION
+          aws lambda update-function-code --function-name $LAMBDA_API_ARN --image-uri $API_IMAGE --region $AWS_REGION
+          aws lambda update-function-code --function-name $LAMBDA_CRON_ARN --image-uri $CRON_IMAGE --region $AWS_REGION
