@@ -1,16 +1,14 @@
 package types
 
 type Station struct {
-	Id          string
-	Title       string
-	Brand       string
-	Date        string
-	Price       FuelPrice
-	TradingName string
-	Location    string
-	Address     string
-	Latitude    float64
-	Longitude   float64
+	Id        string
+	Title     string
+	Brand     string
+	Date      string
+	Price     FuelPrice
+	Address   string
+	Latitude  float64
+	Longitude float64
 }
 
 type FuelPrice struct {

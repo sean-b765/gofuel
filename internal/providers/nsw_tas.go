@@ -82,7 +82,6 @@ func TransformNswTasStations(stations []NswTasStation, prices []NswTasStationFue
 			Title:     s.Name,
 			Brand:     s.Brand,
 			Date:      date,
-			Location:  s.State,
 			Address:   s.Address,
 			Latitude:  s.Location.Latitude,
 			Longitude: s.Location.Longitude,

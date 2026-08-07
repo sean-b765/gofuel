@@ -19,7 +19,6 @@ type WaStation struct {
 	Date        string `xml:"date"`
 	Price       string `xml:"price"`
 	TradingName string `xml:"trading-name"`
-	Location    string `xml:"location"`
 	Address     string `xml:"address"`
 	Phone       string `xml:"phone"`
 	Latitude    string `xml:"latitude"`
@@ -45,16 +44,14 @@ func transformWaStations(items []WaStation) []types.Station {
 	stations := make([]types.Station, 0, len(items))
 	for _, item := range items {
 		stations = append(stations, types.Station{
-			Id:          Md5HashWa(item),
-			Title:       item.Title,
-			Brand:       item.Brand,
-			Date:        util.NormaliseDate(item.Date),
-			TradingName: item.TradingName,
-			Location:    item.Location,
-			Address:     item.Address,
-			Latitude:    util.ToFloat(item.Latitude),
-			Longitude:   util.ToFloat(item.Longitude),
-			Price:       types.FuelPrice{Ulp91: float32(util.ToFloat(item.Price))},
+			Id:        Md5HashWa(item),
+			Title:     item.TradingName,
+			Brand:     item.Brand,
+			Date:      util.NormaliseDate(item.Date),
+			Address:   item.Address,
+			Latitude:  util.ToFloat(item.Latitude),
+			Longitude: util.ToFloat(item.Longitude),
+			Price:     types.FuelPrice{Ulp91: float32(util.ToFloat(item.Price))},
 		})
 	}
 	return stations
