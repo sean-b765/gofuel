@@ -34,9 +34,12 @@ func main() {
 		log.Fatalf("secrets: %v", err)
 	}
 
-	evt := cron.Event{
-		Provider: os.Getenv("PROVIDER"),
-		Day:      os.Getenv("DAY"),
+	evt := cron.Event{Provider: os.Getenv("PROVIDER"), Day: os.Getenv("DAY")}
+	if len(os.Args) > 1 {
+		evt.Provider = os.Args[1]
+		if len(os.Args) > 2 {
+			evt.Day = os.Args[2]
+		}
 	}
 	if err := cron.Run(context.Background(), evt); err != nil {
 		log.Fatalf("cron: %v", err)

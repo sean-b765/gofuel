@@ -248,10 +248,10 @@ func toStation(item types.StationItem) types.Station {
 	}
 }
 
-func PutStations(stations []types.Station) error {
+func PutStations(stations []types.Station) ([]types.StationItem, error) {
 	tableName := os.Getenv("DDB_TABLE_STATIONS")
 	if tableName == "" {
-		return fmt.Errorf("DDB_TABLE_STATIONS not set")
+		return nil, fmt.Errorf("DDB_TABLE_STATIONS not set")
 	}
 
 	seen := make(map[string]struct{}, len(stations))
@@ -273,11 +273,11 @@ func PutStations(stations []types.Station) error {
 			end = len(items)
 		}
 		if err := putBatch(tableName, items[i:end]); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return items, nil
 }
 
 func putBatch(tableName string, batch []types.StationItem) error {

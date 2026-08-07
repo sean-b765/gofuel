@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"seanboaden.dev/fuel/internal/firehose"
 	"seanboaden.dev/fuel/internal/providers"
 	"seanboaden.dev/fuel/internal/store"
 )
@@ -25,8 +26,13 @@ func Run(ctx context.Context, evt Event) error {
 	stations := providers.FetchProviderAndDay(evt.Provider, evt.Day)
 	log.Printf("[cron] provider=%s day=%s fetched=%d", evt.Provider, evt.Day, len(stations))
 
-	if err := store.PutStations(stations); err != nil {
+	items, err := store.PutStations(stations)
+	if err != nil {
 		return fmt.Errorf("write stations: %w", err)
+	}
+
+	if err := firehose.PutStations(items); err != nil {
+		return fmt.Errorf("firehose: %w", err)
 	}
 	return nil
 }

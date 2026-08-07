@@ -310,6 +310,11 @@ resource "aws_iam_role_policy" "cron" {
         ]
         Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/gofuel/*"
       },
+      {
+        Effect   = "Allow"
+        Action   = ["firehose:PutRecord", "firehose:PutRecordBatch"]
+        Resource = aws_kinesis_firehose_delivery_stream.stations.arn
+      },
     ]
   })
 }
@@ -329,6 +334,7 @@ resource "aws_lambda_function" "cron" {
     variables = {
       DDB_TABLE_STATIONS = aws_dynamodb_table.public.name
       DDB_TABLE_AUTH     = aws_dynamodb_table.auth.name
+      FIREHOSE_STREAM    = aws_kinesis_firehose_delivery_stream.stations.name
       ENVIRONMENT        = "production"
     }
   }
@@ -444,5 +450,195 @@ resource "aws_scheduler_schedule" "sa_qld" {
     arn      = aws_lambda_function.cron.arn
     role_arn = aws_iam_role.scheduler.arn
     input    = jsonencode({ provider = "sa_qld", day = "" })
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Firehose -> S3: archived station records, partitioned by event date
+# ---------------------------------------------------------------------------
+
+resource "aws_s3_bucket" "firehose" {
+  bucket = "gofuel-firehose-historical"
+
+  tags = {
+    Project = "gofuel"
+  }
+}
+
+resource "aws_s3_bucket_ownership_controls" "firehose" {
+  bucket = aws_s3_bucket.firehose.id
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "firehose" {
+  bucket                  = aws_s3_bucket.firehose.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "firehose" {
+  bucket = aws_s3_bucket.firehose.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "firehose" {
+  bucket = aws_s3_bucket.firehose.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "firehose" {
+  bucket = aws_s3_bucket.firehose.id
+
+  rule {
+    id     = "data-transition"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+
+    expiration {
+      days = 365
+    }
+  }
+
+  rule {
+    id     = "errors-expire"
+    status = "Enabled"
+
+    filter {
+      prefix = "errors/"
+    }
+
+    expiration {
+      days = 7
+    }
+  }
+}
+
+resource "aws_cloudwatch_log_group" "firehose" {
+  name              = "/aws/kinesisfirehose/gofuel-firehose"
+  retention_in_days = 14
+
+  tags = {
+    Project = "gofuel"
+  }
+}
+
+resource "aws_iam_role" "firehose" {
+  name = "gofuel-firehose-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "firehose.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Project = "gofuel"
+  }
+}
+
+resource "aws_iam_role_policy" "firehose" {
+  name = "gofuel-firehose-policy"
+  role = aws_iam_role.firehose.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:AbortMultipartUpload",
+          "s3:GetBucketLocation",
+          "s3:GetObject",
+          "s3:ListBucket",
+          "s3:ListBucketMultipartUploads",
+          "s3:PutObject",
+        ]
+        Resource = [
+          aws_s3_bucket.firehose.arn,
+          "${aws_s3_bucket.firehose.arn}/*",
+        ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["logs:PutLogEvents"]
+        Resource = "${aws_cloudwatch_log_group.firehose.arn}:*"
+      },
+    ]
+  })
+}
+
+resource "aws_kinesis_firehose_delivery_stream" "stations" {
+  name        = "gofuel-stations"
+  destination = "extended_s3"
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  extended_s3_configuration {
+    role_arn            = aws_iam_role.firehose.arn
+    bucket_arn          = aws_s3_bucket.firehose.arn
+    prefix              = "!{partitionKeyFromQuery:date}/"
+    error_output_prefix = "errors/!{firehose:error-output-type}/!{timestamp:yyyy/MM/dd}/"
+    compression_format  = "GZIP"
+    file_extension      = ".ndjson.gz"
+
+    buffering_size     = 64
+    buffering_interval = 60
+
+    dynamic_partitioning_configuration {
+      enabled        = true
+      retry_duration = 300
+    }
+
+    processing_configuration {
+      enabled = true
+
+      processors {
+        type = "MetadataExtraction"
+        parameters {
+          parameter_name  = "MetadataExtractionQuery"
+          parameter_value = "{date:(.date|gsub(\"-\";\"/\"))}"
+        }
+        parameters {
+          parameter_name  = "JsonParsingEngine"
+          parameter_value = "JQ-1.6"
+        }
+      }
+    }
+
+    cloudwatch_logging_options {
+      enabled         = true
+      log_group_name  = aws_cloudwatch_log_group.firehose.name
+      log_stream_name = "DestinationDelivery"
+    }
+  }
+
+  tags = {
+    Project = "gofuel"
   }
 }

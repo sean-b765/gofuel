@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.32
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.55
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.62.1
+	github.com/aws/aws-sdk-go-v2/service/firehose v1.46.4
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.73.4
 	github.com/awslabs/aws-lambda-go-api-proxy v0.14.0
 	github.com/joho/godotenv v1.5.1

@@ -48,7 +48,7 @@ func transformWaStations(items []WaStation) []types.Station {
 			Id:          Md5HashWa(item),
 			Title:       item.Title,
 			Brand:       item.Brand,
-			Date:        item.Date,
+			Date:        util.NormaliseDate(item.Date),
 			TradingName: item.TradingName,
 			Location:    item.Location,
 			Address:     item.Address,

@@ -16,7 +16,8 @@ air
 - `cmd/api/dev` — local Gin server entry point
 - `cmd/api/prod` — Lambda + gin-api-proxy entry point (API Gateway)
 - `cmd/cron` — refresh job: dual-mode (Lambda via EventBridge Scheduler, or local via `PROVIDER`/`DAY` env)
-- `internal/cron` — `cron.go` (`Event` + `Run`): validates payload, fetches one provider, writes to DynamoDB
+- `internal/cron` — `cron.go` (`Event` + `Run`): validates payload, fetches one provider, writes to DynamoDB, then publishes to Firehose
+- `internal/firehose` — Kinesis Data Firehose publisher (`PutStations(items)`), batches to S3 with date-partitioned prefix
 - `internal/providers` — upstream fuel price fetchers
   - `wa.go` — WA FuelWatch (RSS/XML); `GetWaPrices(day)` where day is `""` (today) or `"tomorrow"`
   - `nsw_tas.go` — NSW+TAS FuelAPI (OAuth bearer + apikey headers)
@@ -87,14 +88,24 @@ otherwise a fresh token is fetched and overwritten via `PutItem`.
 
 `cmd/cron/main.go` is the refresh entry point. In Lambda mode it receives an
 `internal/cron.Event` from EventBridge Scheduler, validates it, calls
-`providers.FetchProviderAndDay(provider, day)`, then `store.PutStations(items)`.
-In local mode it reads `PROVIDER`/`DAY` env vars and does the same.
+`providers.FetchProviderAndDay(provider, day)`, then `store.PutStations(items)`,
+then `firehose.PutStations(items)`. In local mode it reads `PROVIDER`/`DAY`
+env vars and does the same.
 
 `PutStations` dedupes by `StationId` (first-wins), marshals each via
 `geohash.CreateGeohash` + `attributevalue.MarshalMap`, chunks into 25-item
 `BatchWriteItem` batches (DynamoDB hard limit), writes sequentially with a retry
 loop for throttled / unprocessed items (exponential backoff, 100ms→5s cap,
-10 attempts).
+10 attempts). It returns the marshalled items so the caller can fan them out
+to Kinesis Data Firehose.
+
+`firehose.PutStations` (env `FIREHOSE_STREAM`; no-op if unset, which lets local
+runs opt out) marshals each `StationItem` to JSON + `\n`, batches into 400-record
+`PutRecordBatch` calls (Firehose hard limits: 500 records / 4 MiB per call),
+retries failed records up to 3 attempts. The Firehose delivery stream uses
+dynamic partitioning with a jq query `{date:(.date|gsub("-";"/"))}` and
+prefix `!{partitionKeyFromQuery:date}/` so S3 objects land under
+`<bucket>/<YYYY/MM/DD>/<timestamp>-<random>.ndjson.gz`.
 
 ### Cron / EventBridge schedules
 
@@ -119,7 +130,7 @@ All schedules use `schedule_expression_timezone = "Australia/Perth"`:
 Validation in `internal/cron.Run`: unknown `provider` or `day` returns an error
 (the Lambda invocation is marked failed, so EventBridge retry policy applies).
 
-Local run: `PROVIDER=wa DAY=tomorrow go run ./cmd/cron`.
+Local run: `go run ./cmd/cron <provider> [day]`, e.g. `go run ./cmd/cron wa tomorrow`. Env-var fallback (`PROVIDER`/`DAY`) still works. Makefile shortcuts: `make cron-wa`, `make cron-wa-tomorrow`, `make cron-nsw`, `make cron-sa`, or `make cron p=nsw_tas day=`.
 
 ### Docker (multi-target)
 
