@@ -25,6 +25,7 @@ const (
 	maxQueries    = 512
 	maxConcurrent = 20
 	gsiSubRegion  = "GSI_SubRegion"
+	stationTTL    = 48 * 60 * 60
 )
 
 var ErrBoundsTooLarge = errors.New("bounding box too large")
@@ -264,7 +265,9 @@ func PutStations(stations []types.Station) ([]types.StationItem, error) {
 			continue
 		}
 		seen[s.Id] = struct{}{}
-		items = append(items, geohash.CreateGeohash(s))
+		item := geohash.CreateGeohash(s)
+		item.TTL = time.Now().Unix() + stationTTL
+		items = append(items, item)
 	}
 
 	for i := 0; i < len(items); i += batchSize {

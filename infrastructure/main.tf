@@ -32,6 +32,11 @@ resource "aws_dynamodb_table" "public" {
     non_key_attributes = ["StationId", "Title", "Brand", "Address", "Latitude", "Longitude", "Date", "Ulp91", "Ulp95", "Ulp98", "Diesel"]
   }
 
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
   lifecycle { prevent_destroy = true }
 }
 

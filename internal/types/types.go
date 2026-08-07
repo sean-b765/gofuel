@@ -39,6 +39,7 @@ type StationItem struct {
 	Ulp98            float32 `json:"ulp98"`
 	Diesel           float32 `json:"diesel"`
 	Date             string  `json:"date"`
+	TTL              int64   `json:"-" dynamodbav:"ttl"`
 }
 
 type GoogleJourneyResponse struct {
