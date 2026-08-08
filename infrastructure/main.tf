@@ -63,9 +63,7 @@ resource "aws_dynamodb_table" "auth" {
   lifecycle { prevent_destroy = true }
 }
 
-# ---------------------------------------------------------------------------
-# SSM Parameter Store: provider API keys (plaintext, values set out-of-band)
-# ---------------------------------------------------------------------------
+# SSM Parameter Store: provider API keys
 
 locals {
   secret_params = toset([
@@ -140,9 +138,7 @@ resource "aws_api_gateway_integration" "any_integration" {
   uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:gofuel/invocations"
 }
 
-# ---------------------------------------------------------------------------
-# API Gateway: CORS preflight (mock OPTIONS on the proxy resource)
-# ---------------------------------------------------------------------------
+# API Gateway: CORS preflight
 
 resource "aws_api_gateway_method" "options" {
   rest_api_id   = aws_api_gateway_rest_api.this.id
@@ -248,9 +244,20 @@ resource "aws_api_gateway_method_settings" "proxy_throttle" {
   }
 }
 
-# ---------------------------------------------------------------------------
-# API: Lambda + IAM (image_uri managed by CI; config managed by Terraform)
-# ---------------------------------------------------------------------------
+# API Gateway: custom domain mapping
+
+data "aws_api_gateway_domain_name" "this" {
+  domain_name = "api.seanboaden.dev"
+}
+
+resource "aws_api_gateway_base_path_mapping" "gofuel" {
+  api_id      = aws_api_gateway_rest_api.this.id
+  stage_name  = aws_api_gateway_stage.prod.stage_name
+  domain_name = data.aws_api_gateway_domain_name.this.domain_name
+  base_path   = "gofuel"
+}
+
+# API: Lambda + IAM
 
 resource "aws_iam_role" "api" {
   name = "gofuel-api-role"
@@ -343,9 +350,7 @@ resource "aws_lambda_function" "this" {
   }
 }
 
-# ---------------------------------------------------------------------------
 # Cron: Lambda + IAM + EventBridge Scheduler
-# ---------------------------------------------------------------------------
 
 resource "aws_iam_role" "cron" {
   name = "gofuel-cron-role"
@@ -547,9 +552,7 @@ resource "aws_scheduler_schedule" "sa_qld" {
   }
 }
 
-# ---------------------------------------------------------------------------
 # Firehose -> S3: archived station records, partitioned by event date
-# ---------------------------------------------------------------------------
 
 resource "aws_s3_bucket" "firehose" {
   bucket = "gofuel-firehose-historical"
