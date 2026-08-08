@@ -43,6 +43,10 @@ func Md5HashWa(station WaStation) string {
 func transformWaStations(items []WaStation) []types.Station {
 	stations := make([]types.Station, 0, len(items))
 	for _, item := range items {
+		ulp91 := float32(util.ToFloat(item.Price))
+		if ulp91 == 0 {
+			continue
+		}
 		stations = append(stations, types.Station{
 			Id:        Md5HashWa(item),
 			Title:     item.TradingName,
@@ -51,7 +55,7 @@ func transformWaStations(items []WaStation) []types.Station {
 			Address:   item.Address,
 			Latitude:  util.ToFloat(item.Latitude),
 			Longitude: util.ToFloat(item.Longitude),
-			Price:     types.FuelPrice{Ulp91: float32(util.ToFloat(item.Price))},
+			Price:     types.FuelPrice{Ulp91: ulp91},
 		})
 	}
 	return stations

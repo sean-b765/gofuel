@@ -63,6 +63,10 @@ func TransformSaQldStations(stations []SaQldStation, prices []SaQldStationPrice)
 			date = util.FormatDate("2006-01-02T15:04:05", p.TransactionDateUtc)
 		}
 
+		if fuelPrice.Ulp91 == 0 {
+			continue
+		}
+
 		result = append(result, types.Station{
 			Id:        strconv.Itoa(s.S),
 			Title:     s.N,
