@@ -1,29 +1,53 @@
-module example.com/fuel
+module seanboaden.dev/fuel
 
-go 1.23.0
+go 1.24
 
 require (
 	github.com/aws/aws-lambda-go v1.33.0
+	github.com/aws/aws-sdk-go-v2 v1.43.4
+	github.com/aws/aws-sdk-go-v2/config v1.32.32
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.55
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.62.1
+	github.com/aws/aws-sdk-go-v2/service/firehose v1.46.4
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.73.4
 	github.com/awslabs/aws-lambda-go-api-proxy v0.14.0
 	github.com/joho/godotenv v1.5.1
 	github.com/tidwall/gjson v1.14.0
 )
 
 require (
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.31 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.32 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.35 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.35 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.33 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.36.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.14 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.12.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.32 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.5.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.33.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.38.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.45.1 // indirect
+	github.com/aws/smithy-go v1.27.6 // indirect
+)
+
+require (
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
-	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/gin-contrib/sse v1.0.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mmcloughlin/geohash v0.10.0
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
