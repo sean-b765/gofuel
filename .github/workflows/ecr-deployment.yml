@@ -7,7 +7,7 @@ on:
 env:
   AWS_REGION: ap-southeast-2
   ECR_REPOSITORY: gofuel
-  ROLE: arn:aws:iam::476720619618:role/github-actions-access
+  ROLE: arn:aws:iam::476720619618:role/gofuel-cicd-deploy-role
 
 permissions:
   contents: read
