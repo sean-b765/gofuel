@@ -3,3 +3,9 @@ variable "base_path" {
   type        = string
   default     = "/perthfuel"
 }
+
+variable "allowed_origin" {
+  description = "Origin allowed by API Gateway CORS"
+  type        = string
+  default     = "https://gofuel.seanboaden.dev"
+}
