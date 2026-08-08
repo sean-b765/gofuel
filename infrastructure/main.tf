@@ -236,6 +236,18 @@ resource "aws_api_gateway_stage" "prod" {
   xray_tracing_enabled = true
 }
 
+resource "aws_api_gateway_method_settings" "proxy_throttle" {
+  rest_api_id = aws_api_gateway_rest_api.this.id
+  stage_name  = aws_api_gateway_stage.prod.stage_name
+  method_path = "*/*"
+
+  settings {
+    metrics_enabled        = true
+    throttling_burst_limit = 50
+    throttling_rate_limit  = 20
+  }
+}
+
 # ---------------------------------------------------------------------------
 # API: Lambda + IAM (image_uri managed by CI; config managed by Terraform)
 # ---------------------------------------------------------------------------
