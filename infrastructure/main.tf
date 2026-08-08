@@ -739,3 +739,84 @@ resource "aws_kinesis_firehose_delivery_stream" "stations" {
     Project = "gofuel"
   }
 }
+
+# IAM Role for github oidc ci/cd
+
+data "aws_ecr_repository" "gofuel" {
+  name = "gofuel"
+}
+
+data "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
+}
+
+data "aws_iam_policy_document" "github_actions_assume_role" {
+  statement {
+    sid     = "GithubOidcAssumeRole"
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [data.aws_iam_openid_connect_provider.github.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${var.gh_repo}:environment:production"]
+    }
+  }
+}
+
+resource "aws_iam_role" "github_actions_role" {
+  name               = "gofuel-cicd-deploy-role"
+  assume_role_policy = data.aws_iam_policy_document.github_actions_assume_role.json
+}
+
+data "aws_iam_policy_document" "deployment_policy" {
+  statement {
+    sid       = "AllowLambdaUpdate"
+    actions   = ["lambda:UpdateFunctionCode"]
+    effect    = "Allow"
+    resources = [aws_lambda_function.this.arn, aws_lambda_function.cron.arn]
+  }
+  statement {
+    sid    = "AllowEcrAuth"
+    effect = "Allow"
+    actions = [
+      "ecr:GetAuthorizationToken",
+    ]
+    resources = ["*"]
+  }
+  statement {
+    sid    = "AllowEcrPush"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:GetRepositoryPolicy",
+      "ecr:DescribeRepositories",
+      "ecr:ListImages",
+      "ecr:DescribeImages",
+      "ecr:BatchGetImage",
+      "ecr:InitiateLayerUpload",
+      "ecr:UploadLayerPart",
+      "ecr:CompleteLayerUpload",
+      "ecr:PutImage",
+    ]
+    resources = [data.aws_ecr_repository.gofuel.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "deployment" {
+  name   = "gofuel-cicd-deploy-policy"
+  role   = aws_iam_role.github_actions_role.id
+  policy = data.aws_iam_policy_document.deployment_policy.json
+}
