@@ -203,6 +203,14 @@ resource "aws_api_gateway_method_response" "any_200" {
   }
 }
 
+resource "aws_lambda_permission" "apigw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.this.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.this.execution_arn}/*/*"
+}
+
 resource "aws_api_gateway_deployment" "this" {
   rest_api_id = aws_api_gateway_rest_api.this.id
 
@@ -213,6 +221,10 @@ resource "aws_api_gateway_deployment" "this" {
       aws_api_gateway_integration.options.id,
       aws_api_gateway_method_response.options.id,
       aws_api_gateway_integration_response.options.id,
+      aws_api_gateway_method.any.id,
+      aws_api_gateway_integration.any_integration.id,
+      aws_api_gateway_method_response.any_200.id,
+      aws_lambda_permission.apigw.id,
     ]))
   }
 
@@ -295,7 +307,10 @@ resource "aws_iam_role_policy" "api" {
       {
         Effect   = "Allow"
         Action   = ["dynamodb:Query"]
-        Resource = aws_dynamodb_table.public.arn
+        Resource = [
+          aws_dynamodb_table.public.arn,
+          "${aws_dynamodb_table.public.arn}/index/*",
+        ]
       },
       {
         Effect = "Allow"
