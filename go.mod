@@ -1,6 +1,6 @@
 module seanboaden.dev/fuel
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/aws/aws-lambda-go v1.33.0
