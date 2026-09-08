@@ -22,6 +22,8 @@ const (
 	table     = "stations"
 	workGroup = "gofuel"
 
+	dataStart = "2017/01/01"
+
 	pollInterval = 250 * time.Millisecond
 	queryTimeout = 25 * time.Second
 )
@@ -78,6 +80,56 @@ func GetStationsForDate(date string) ([]types.Station, error) {
 	return fetchResults(ctx, c, id)
 }
 
+/*
+ * Returns a station's price history between two dates, given as yyyy-mm-dd
+ */
+func GetStationHistory(stationID, from, to string) ([]types.Station, error) {
+	if strings.ContainsAny(stationID, "'\";\\") {
+		return nil, fmt.Errorf("invalid station id %q", stationID)
+	}
+
+	c := getClient()
+	if c == nil {
+		return nil, fmt.Errorf("athena client unavailable")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+
+	fromDay, err := time.Parse("2006-01-02", from)
+	if err != nil {
+		return nil, fmt.Errorf("parse from %q: %w", from, err)
+	}
+	// widen the partition range by a day so partitions holding "tomorrow" prices (WA) aren't missed
+	dtFrom := fromDay.AddDate(0, 0, -1).Format("2006/01/02")
+	if dtFrom < dataStart {
+		dtFrom = dataStart
+	}
+	dtTo := strings.ReplaceAll(to, "-", "/")
+
+	query := fmt.Sprintf(
+		`SELECT station_id, title, brand, address, "date", latitude, longitude, ulp91, ulp95, ulp98, diesel FROM "%s"."%s" WHERE station_id = '%s' AND dt BETWEEN '%s' AND '%s' AND "date" BETWEEN '%s' AND '%s' ORDER BY "date" ASC`,
+		database, table, stationID, dtFrom, dtTo, from, to,
+	)
+
+	out, err := c.StartQueryExecution(ctx, &athena.StartQueryExecutionInput{
+		QueryString: aws.String(query),
+		QueryExecutionContext: &athtypes.QueryExecutionContext{
+			Database: aws.String(database),
+		},
+		WorkGroup: aws.String(workGroup),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("start query: %w", err)
+	}
+	id := out.QueryExecutionId
+
+	if err := waitForQuery(ctx, c, id); err != nil {
+		return nil, err
+	}
+	return fetchResults(ctx, c, id)
+}
+
 func waitForQuery(ctx context.Context, c *athena.Client, id *string) error {
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
@@ -90,6 +142,9 @@ func waitForQuery(ctx context.Context, c *athena.Client, id *string) error {
 		status := out.QueryExecution.Status
 		switch status.State {
 		case athtypes.QueryExecutionStateSucceeded:
+			if st := out.QueryExecution.Statistics; st != nil && st.DataScannedInBytes != nil {
+				log.Printf("[athena] query %s scanned %d bytes", aws.ToString(id), *st.DataScannedInBytes)
+			}
 			return nil
 		case athtypes.QueryExecutionStateFailed, athtypes.QueryExecutionStateCancelled:
 			return fmt.Errorf("query %s: %s", strings.ToLower(string(status.State)), aws.ToString(status.StateChangeReason))

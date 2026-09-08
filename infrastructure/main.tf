@@ -359,9 +359,12 @@ resource "aws_iam_role_policy" "api" {
         ]
       },
       {
-        Effect   = "Allow"
-        Action   = ["s3:PutObject"]
-        Resource = "${aws_s3_bucket.firehose.arn}/history/*"
+        Effect = "Allow"
+        Action = ["s3:PutObject"]
+        Resource = [
+          "${aws_s3_bucket.firehose.arn}/history/*",
+          "${aws_s3_bucket.firehose.arn}/cache/*",
+        ]
       },
     ]
   })

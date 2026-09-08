@@ -51,10 +51,10 @@ func GetDay(c *gin.Context) {
 	}
 
 	// Write through to s3 as cache
-	bytes, err := json.Marshal(stations)
-	if err == nil {
-	fmt.Printf("[s3] wrote %v to s3 %v %v\n", len(stations), key, err)
-		s3.Put(key, bytes)
+	if bytes, err := json.Marshal(stations); err == nil {
+		if err := s3.Put(key, bytes); err != nil {
+			log.Printf("[day] cache write %s: %v", key, err)
+		}
 	}
 
 	log.Printf("[day] done: %d stations in %v", len(stations), time.Since(start))
