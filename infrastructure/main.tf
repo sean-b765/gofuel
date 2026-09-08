@@ -509,6 +509,10 @@ resource "aws_lambda_function" "cron" {
     mode = "Active"
   }
 
+  lifecycle {
+    ignore_changes = [image_uri]
+  }
+
   tags = {
     Project = "gofuel"
   }
@@ -668,10 +672,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "firehose" {
     transition {
       days          = 30
       storage_class = "STANDARD_IA"
-    }
-
-    expiration {
-      days = 365
     }
   }
 
