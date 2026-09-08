@@ -22,6 +22,7 @@ func SetupRouter() *gin.Engine {
 	r.GET("/ping", Health)
 
 	r.GET("/current", GetCurrent)
+	r.GET("/day/:date", GetDay)
 	r.GET("/journey", GetJourney)
 
 	return r
