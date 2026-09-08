@@ -305,8 +305,8 @@ resource "aws_iam_role_policy" "api" {
         Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/gofuel*:*"
       },
       {
-        Effect   = "Allow"
-        Action   = ["dynamodb:Query"]
+        Effect = "Allow"
+        Action = ["dynamodb:Query"]
         Resource = [
           aws_dynamodb_table.public.arn,
           "${aws_dynamodb_table.public.arn}/index/*",
@@ -796,6 +796,147 @@ resource "aws_kinesis_firehose_delivery_stream" "stations" {
   tags = {
     Project = "gofuel"
   }
+}
+
+# Athena historical stuff
+
+resource "aws_athena_workgroup" "gofuel" {
+  name = "gofuel"
+
+  configuration {
+    enforce_workgroup_configuration    = true
+    publish_cloudwatch_metrics_enabled = true
+    result_configuration {
+      output_location = "s3://${aws_s3_bucket.firehose.bucket}/history/"
+    }
+  }
+
+  tags = {
+    Project = "gofuel"
+  }
+}
+
+resource "aws_glue_catalog_database" "this" {
+  name = "gofuel"
+}
+
+resource "aws_glue_catalog_table" "stations_raw" {
+  name          = "stations_raw"
+  database_name = aws_glue_catalog_database.this.name
+  table_type    = "EXTERNAL_TABLE"
+
+  parameters = {
+    EXTERNAL                      = "TRUE"
+    "projection.enabled"          = "true"
+    "projection.dt.type"          = "date"
+    "projection.dt.range"         = "2024/01/01,NOW"
+    "projection.dt.format"        = "yyyy/MM/dd"
+    "projection.dt.interval"      = "1"
+    "projection.dt.interval.unit" = "DAYS"
+    "storage.location.template"   = "s3://${aws_s3_bucket.firehose.bucket}/$${dt}/"
+    "compression.type"            = "GZIP"
+  }
+
+  storage_descriptor {
+    location      = "s3://${aws_s3_bucket.firehose.bucket}/"
+    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+
+    ser_de_info {
+      name                  = "stations-serde"
+      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+    }
+
+    columns {
+      name = "region_geohash"
+      type = "string"
+    }
+    columns {
+      name = "town_geohash"
+      type = "string"
+    }
+    columns {
+      name = "sub_region_geohash"
+      type = "string"
+    }
+    columns {
+      name = "station_id"
+      type = "string"
+    }
+    columns {
+      name = "title"
+      type = "string"
+    }
+    columns {
+      name = "brand"
+      type = "string"
+    }
+    columns {
+      name = "address"
+      type = "string"
+    }
+    columns {
+      name = "latitude"
+      type = "double"
+    }
+    columns {
+      name = "longitude"
+      type = "double"
+    }
+    columns {
+      name = "ulp91"
+      type = "float"
+    }
+    columns {
+      name = "ulp95"
+      type = "float"
+    }
+    columns {
+      name = "ulp98"
+      type = "float"
+    }
+    columns {
+      name = "diesel"
+      type = "float"
+    }
+    columns {
+      name = "date"
+      type = "string"
+    }
+  }
+
+  partition_keys {
+    name = "dt"
+    type = "string"
+  }
+}
+
+resource "aws_athena_named_query" "stations_view" {
+  name        = "stations (deduped view)"
+  workgroup   = aws_athena_workgroup.gofuel.name
+  database    = aws_glue_catalog_database.this.name
+  description = "Consolidated view of gofuel.stations_raw"
+
+  query = <<-SQL
+    CREATE OR REPLACE VIEW gofuel.stations AS
+    WITH ranked AS (
+      SELECT
+        dt, date, station_id, brand, title, address,
+        latitude, longitude, ulp91, ulp95, ulp98, diesel,
+        region_geohash, sub_region_geohash, town_geohash,
+        ROW_NUMBER() OVER (
+          PARTITION BY station_id, date
+          ORDER BY "$path" DESC
+        ) AS rn
+      FROM gofuel.stations_raw
+    )
+    SELECT
+      dt, date, station_id, brand, title, address,
+      latitude, longitude, ulp91, ulp95, ulp98, diesel,
+      region_geohash, sub_region_geohash, town_geohash
+    FROM ranked
+    WHERE rn = 1;
+  SQL
 }
 
 # IAM Role for github oidc ci/cd
