@@ -18,24 +18,8 @@ import (
  */
 func GetCurrent(c *gin.Context) {
 	start := time.Now()
-	tlQ := c.Query("topLeft")
-	brQ := c.Query("bottomRight")
-	log.Printf("[current] request topLeft=%s bottomRight=%s", tlQ, brQ)
-
-	tl, err := util.ParseCoordinates(tlQ)
+	tl, br, err := util.ExtractCoordinates(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid topLeft: " + err.Error()})
-		return
-	}
-
-	br, err := util.ParseCoordinates(brQ)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid bottomRight: " + err.Error()})
-		return
-	}
-
-	if tl[0] <= br[0] || tl[1] >= br[1] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid bounding box: topLeft must be north-west of bottomRight"})
 		return
 	}
 
@@ -50,6 +34,6 @@ func GetCurrent(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[current] done: %d stations in %v (%s,%s)", len(stations), time.Since(start), tlQ, brQ)
+	log.Printf("[current] done: %d stations in %v", len(stations), time.Since(start))
 	c.JSON(http.StatusOK, types.JsonResponse{Stations: stations})
 }

@@ -20,6 +20,7 @@ type WaStation struct {
 	Price       string `xml:"price"`
 	TradingName string `xml:"trading-name"`
 	Address     string `xml:"address"`
+	Location    string `xml:"location"`
 	Phone       string `xml:"phone"`
 	Latitude    string `xml:"latitude"`
 	Longitude   string `xml:"longitude"`
@@ -52,7 +53,7 @@ func transformWaStations(items []WaStation) []types.Station {
 			Title:     item.TradingName,
 			Brand:     item.Brand,
 			Date:      util.NormaliseDate(item.Date),
-			Address:   item.Address,
+			Address:   fmt.Sprintf("%s, %s", item.Address, item.Location),
 			Latitude:  util.ToFloat(item.Latitude),
 			Longitude: util.ToFloat(item.Longitude),
 			Price:     types.FuelPrice{Ulp91: ulp91},
