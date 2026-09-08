@@ -386,6 +386,7 @@ resource "aws_lambda_function" "this" {
       DDB_TABLE_STATIONS = aws_dynamodb_table.public.name
       BASE_PATH          = var.base_path
       ENVIRONMENT        = "production"
+      S3_BUCKET = aws_s3_bucket.firehose.bucket
     }
   }
 
